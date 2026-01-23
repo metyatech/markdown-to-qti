@@ -2,8 +2,8 @@
 
 ## Scope
 
-- This repository will implement a tool that converts Markdown content into IMS QTI 2.1.
-- Prioritize correctness of QTI 2.1 output and a clean internal data model.
+- This repository will implement a tool that converts Markdown content into IMS QTI 3.0.
+- Prioritize correctness of QTI 3.0 output and a clean internal data model.
 
 ## Kotlin / Gradle conventions
 
@@ -11,9 +11,9 @@
 - Keep the entrypoint small; put logic into testable functions/classes.
 - Favor immutable data, explicit types at boundaries, and clear error types.
 
-## QTI 2.1 output rules
+## QTI 3.0 output rules
 
-- Output must be valid QTI 2.1 XML (well-formed, schema-aligned).
+- Output must be valid QTI 3.0 XML (well-formed, schema-aligned).
 - Keep identifiers stable and deterministic (avoid random IDs unless explicitly required).
 - When behavior is ambiguous, prefer standards-compliant conservative output and document the decision.
 
