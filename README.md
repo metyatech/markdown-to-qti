@@ -21,6 +21,23 @@ If you need to pin Gradle to a specific JDK, copy `gradle.properties.example` to
 
 - Run tests: `gradle test`
 
+## CLI Usage
+
+Generate QTI XML from one or more Markdown files:
+
+- `gradle run --args="--input path/to/question.md --output-dir path/to/out"`
+
+Validate inputs without writing output:
+
+- `gradle run --args="--input path/to/question.md --validate-only"`
+
+Options:
+
+- `--input <path>`: Markdown file or directory (directories scan for `*.md`).
+- `--output-dir <dir>`: Output directory for `.qti.xml` files. Required unless `--validate-only`.
+- `--validate-only`: Parse and validate XML without writing files.
+- `--verbose`: Log processed files.
+
 ## Configuration / Environment Variables
 
 None yet.
