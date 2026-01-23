@@ -3,6 +3,7 @@ package com.metyatech.markdowntoqti
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
@@ -38,15 +39,16 @@ fun runCli(
     inputs.forEach { inputPath ->
         val markdown = inputPath.readText()
         val identifier = inputPath.fileNameWithoutExtension()
-        val qtiXml = convertMarkdownToQti(markdown, identifier)
+        val conversion = convertMarkdownToQtiWithAssets(markdown, identifier, inputPath)
         if (parsed.validateOnly) {
-            validateXml(qtiXml)
+            validateXml(conversion.qtiXml)
             if (parsed.verbose) {
                 output.println("Validated: ${inputPath.toAbsolutePath()}")
             }
         } else {
             val outputFile = outputDir!!.resolve("$identifier.qti.xml")
-            outputFile.writeText(qtiXml)
+            outputFile.writeText(conversion.qtiXml)
+            copyLocalImages(conversion.localImages, outputDir)
             if (parsed.verbose) {
                 output.println("Wrote: ${outputFile.toAbsolutePath()}")
             }
@@ -168,6 +170,14 @@ private fun Path.fileNameWithoutExtension(): String {
         filename.substringBeforeLast('.')
     } else {
         filename
+    }
+}
+
+private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
+    images.forEach { image ->
+        val destination = outputDir.resolve(image.outputRelativePath)
+        destination.parent?.let { Files.createDirectories(it) }
+        Files.copy(image.sourcePath, destination, StandardCopyOption.REPLACE_EXISTING)
     }
 }
 

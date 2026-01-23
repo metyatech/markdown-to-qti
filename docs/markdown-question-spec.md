@@ -105,6 +105,25 @@ Constraints:
 - If present, `## Scoring` MUST appear after `## Prompt` and after `## Options`
   (when the question type is `choice`).
 
+## Images
+
+Images can be embedded in the following sections:
+
+- `## Prompt`
+- `## Options`
+- `## Explanation`
+
+Use standard Markdown image syntax:
+
+- `![alt text](path "optional title")`
+
+Local image handling:
+
+- Image paths without a URL scheme are treated as local files.
+- Local paths MUST be relative to the Markdown file location.
+- When generating output (not `--validate-only`), local image files are copied to the output
+  directory, preserving the relative path.
+
 ## Common Rules
 
 - One question per file.
@@ -149,6 +168,20 @@ Which number is prime?
 - [ ] 9
 - [x] 11
 - [ ] 21
+```
+
+### Prompt with Image
+
+```markdown
+# Plant Cell
+
+## Type
+descriptive
+
+## Prompt
+Identify the highlighted part of the plant cell.
+
+![Highlighted chloroplast](images/plant-cell.png "Plant cell diagram")
 ```
 
 ### Cloze

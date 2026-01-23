@@ -1,6 +1,8 @@
 package com.metyatech.markdowntoqti
 
 import java.math.BigDecimal
+import java.nio.file.Files
+import java.nio.file.Path
 
 private enum class QuestionType {
     DESCRIPTIVE,
@@ -14,9 +16,18 @@ data class ScoringCriterion(
 )
 
 private data class ChoiceOption(
-    val text: String,
+    val parts: List<InlineContent>,
     val isCorrect: Boolean,
 )
+
+private sealed class InlineContent {
+    data class Text(val value: String) : InlineContent()
+    data class Image(
+        val source: String,
+        val alt: String,
+        val title: String?,
+    ) : InlineContent()
+}
 
 private data class ClozeBlank(
     val answer: String,
@@ -31,16 +42,37 @@ private data class MarkdownQuestion(
     val identifier: String,
     val title: String,
     val type: QuestionType,
-    val prompt: String,
-    val explanation: String? = null,
+    val promptParts: List<InlineContent>,
+    val explanationParts: List<InlineContent>? = null,
     val options: List<ChoiceOption> = emptyList(),
     val blanks: List<ClozeBlank> = emptyList(),
     val scoring: List<ScoringCriterion> = emptyList(),
 )
 
+data class LocalImage(
+    val sourcePath: Path,
+    val outputRelativePath: Path,
+)
+
+data class QtiConversionResult(
+    val qtiXml: String,
+    val localImages: List<LocalImage>,
+)
+
+private data class MarkdownParseResult(
+    val question: MarkdownQuestion,
+    val imageSources: List<String>,
+)
+
 fun convertMarkdownToQti(markdown: String, fixtureId: String): String {
-    val question = parseMarkdownQuestion(markdown, fixtureId)
-    return QtiBuilder(question).build()
+    val parsed = parseMarkdownQuestion(markdown, fixtureId)
+    return QtiBuilder(parsed.question).build()
+}
+
+fun convertMarkdownToQtiWithAssets(markdown: String, fixtureId: String, sourcePath: Path): QtiConversionResult {
+    val parsed = parseMarkdownQuestion(markdown, fixtureId)
+    val localImages = resolveLocalImages(parsed.imageSources, sourcePath)
+    return QtiConversionResult(QtiBuilder(parsed.question).build(), localImages)
 }
 
 fun parseScoringSection(lines: List<String>): List<ScoringCriterion> {
@@ -70,7 +102,7 @@ fun parseScoringSection(lines: List<String>): List<ScoringCriterion> {
     return criteria
 }
 
-private fun parseMarkdownQuestion(markdown: String, identifier: String): MarkdownQuestion {
+private fun parseMarkdownQuestion(markdown: String, identifier: String): MarkdownParseResult {
     val normalized = markdown.replace("\r\n", "\n")
     val lines = normalized.split("\n")
     var index = 0
@@ -131,41 +163,49 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
 
     val promptSection = sections["Prompt"]
         ?: throw IllegalArgumentException("Missing ## Prompt section")
-    val prompt = normalizeSectionText(promptSection, "Prompt")
-    if (prompt.isBlank()) {
-        throw IllegalArgumentException("Prompt must not be empty")
-    }
+    val promptText = normalizeSectionText(promptSection, "Prompt")
+    val promptParse = parseInlineContent(promptText, "Prompt")
+    ensureSectionHasContent(promptParse.parts, "Prompt")
 
-    val explanation = sections["Explanation"]?.let { normalizeSectionText(it, "Explanation") }
+    val explanationParse = sections["Explanation"]?.let { sectionLines ->
+        val explanationText = normalizeSectionText(sectionLines, "Explanation")
+        val parsed = parseInlineContent(explanationText, "Explanation")
+        ensureSectionHasContent(parsed.parts, "Explanation")
+        parsed
+    }
 
     val scoring = sections["Scoring"]?.let { parseScoringSection(it) } ?: emptyList()
 
-    return when (type) {
+    val imageSources = mutableListOf<String>()
+    imageSources.addAll(promptParse.imageSources)
+    explanationParse?.let { imageSources.addAll(it.imageSources) }
+
+    val question = when (type) {
         QuestionType.DESCRIPTIVE -> MarkdownQuestion(
             identifier = identifier,
             title = title,
             type = type,
-            prompt = prompt,
-            explanation = explanation,
+            promptParts = promptParse.parts,
+            explanationParts = explanationParse?.parts,
             scoring = scoring,
         )
         QuestionType.CHOICE -> {
             val optionsSection = sections["Options"]
                 ?: throw IllegalArgumentException("Missing ## Options section")
-            val options = parseOptions(optionsSection)
+            val optionsParse = parseOptions(optionsSection)
+            optionsParse.imageSources.forEach { imageSources.add(it) }
             MarkdownQuestion(
                 identifier = identifier,
                 title = title,
                 type = type,
-                prompt = prompt,
-                explanation = explanation,
-                options = options,
+                promptParts = promptParse.parts,
+                explanationParts = explanationParse?.parts,
+                options = optionsParse.options,
                 scoring = scoring,
             )
         }
         QuestionType.CLOZE -> {
-            val parts = parseClozePrompt(prompt)
-            val blanks = parts.filterIsInstance<ClozePart.Blank>().map { it.blank }
+            val blanks = collectClozeBlanks(promptParse.parts)
             if (blanks.isEmpty()) {
                 throw IllegalArgumentException("Cloze prompt must include at least one blank")
             }
@@ -173,17 +213,25 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
                 identifier = identifier,
                 title = title,
                 type = type,
-                prompt = prompt,
-                explanation = explanation,
+                promptParts = promptParse.parts,
+                explanationParts = explanationParse?.parts,
                 blanks = blanks,
                 scoring = scoring,
             )
         }
     }
+
+    return MarkdownParseResult(question, imageSources.distinct())
 }
 
-private fun parseOptions(lines: List<String>): List<ChoiceOption> {
+private data class OptionsParseResult(
+    val options: List<ChoiceOption>,
+    val imageSources: List<String>,
+)
+
+private fun parseOptions(lines: List<String>): OptionsParseResult {
     val options = mutableListOf<ChoiceOption>()
+    val imageSources = mutableListOf<String>()
     val pattern = Regex("""^-\s*\[(x| )]\s+(.+)$""")
 
     lines.forEach { rawLine ->
@@ -198,7 +246,10 @@ private fun parseOptions(lines: List<String>): List<ChoiceOption> {
         if (text.isBlank()) {
             throw IllegalArgumentException("Option text must not be empty")
         }
-        options.add(ChoiceOption(text, isCorrect))
+        val parsed = parseInlineContent(text, "Options")
+        ensureSectionHasContent(parsed.parts, "Options")
+        imageSources.addAll(parsed.imageSources)
+        options.add(ChoiceOption(parsed.parts, isCorrect))
     }
 
     if (options.isEmpty()) {
@@ -209,7 +260,137 @@ private fun parseOptions(lines: List<String>): List<ChoiceOption> {
         throw IllegalArgumentException("Choice question must have exactly one correct option")
     }
 
-    return options
+    return OptionsParseResult(options, imageSources)
+}
+
+private data class InlineParseResult(
+    val parts: List<InlineContent>,
+    val imageSources: List<String>,
+)
+
+private fun parseInlineContent(text: String, sectionName: String): InlineParseResult {
+    val parts = mutableListOf<InlineContent>()
+    val imageSources = mutableListOf<String>()
+    var cursor = 0
+
+    fun appendText(value: String) {
+        if (value.isNotEmpty()) {
+            parts.add(InlineContent.Text(value))
+        }
+    }
+
+    while (cursor < text.length) {
+        val start = text.indexOf("![", cursor)
+        if (start == -1) {
+            appendText(text.substring(cursor))
+            break
+        }
+        if (start > cursor) {
+            appendText(text.substring(cursor, start))
+        }
+
+        val altStart = start + 2
+        val altEnd = text.indexOf("](", altStart)
+        if (altEnd == -1) {
+            throw IllegalArgumentException("Invalid image syntax in $sectionName: missing ']('")
+        }
+        val altText = text.substring(altStart, altEnd)
+        val closeParen = text.indexOf(')', altEnd + 2)
+        if (closeParen == -1) {
+            throw IllegalArgumentException("Invalid image syntax in $sectionName: missing ')' ")
+        }
+        val inner = text.substring(altEnd + 2, closeParen).trim()
+        if (inner.isEmpty()) {
+            throw IllegalArgumentException("Image path must not be empty in $sectionName")
+        }
+
+        val (rawPath, title) = parseImagePathAndTitle(inner, sectionName)
+        val source = stripAngleBrackets(rawPath)
+        if (source.isBlank()) {
+            throw IllegalArgumentException("Image path must not be empty in $sectionName")
+        }
+        parts.add(InlineContent.Image(source = source, alt = altText, title = title))
+        imageSources.add(source)
+
+        cursor = closeParen + 1
+    }
+
+    return InlineParseResult(parts, imageSources)
+}
+
+private fun parseImagePathAndTitle(value: String, sectionName: String): Pair<String, String?> {
+    val doubleQuoteMatch = Regex("""^(.+?)\s+\"(.*)\"$""").matchEntire(value)
+    if (doubleQuoteMatch != null) {
+        val path = doubleQuoteMatch.groupValues[1].trim()
+        return path to doubleQuoteMatch.groupValues[2]
+    }
+
+    val singleQuoteMatch = Regex("""^(.+?)\s+'(.*)'$""").matchEntire(value)
+    if (singleQuoteMatch != null) {
+        val path = singleQuoteMatch.groupValues[1].trim()
+        return path to singleQuoteMatch.groupValues[2]
+    }
+
+    if (value.any { it.isWhitespace() } && !(value.startsWith("<") && value.endsWith(">"))) {
+        throw IllegalArgumentException("Image path must not contain spaces unless wrapped in <> in $sectionName")
+    }
+
+    return value.trim() to null
+}
+
+private fun stripAngleBrackets(value: String): String =
+    if (value.startsWith("<") && value.endsWith(">") && value.length > 2) {
+        value.substring(1, value.length - 1)
+    } else {
+        value
+    }
+
+private fun ensureSectionHasContent(parts: List<InlineContent>, sectionName: String) {
+    val hasContent = parts.any { part ->
+        when (part) {
+            is InlineContent.Image -> true
+            is InlineContent.Text -> part.value.isNotBlank()
+        }
+    }
+    if (!hasContent) {
+        throw IllegalArgumentException("$sectionName section must not be empty")
+    }
+}
+
+private fun collectClozeBlanks(parts: List<InlineContent>): List<ClozeBlank> {
+    return parts.flatMap { part ->
+        when (part) {
+            is InlineContent.Text -> parseClozePrompt(part.value)
+                .filterIsInstance<ClozePart.Blank>()
+                .map { it.blank }
+            is InlineContent.Image -> emptyList()
+        }
+    }
+}
+
+private fun resolveLocalImages(imageSources: List<String>, sourcePath: Path): List<LocalImage> {
+    val sourceDir = sourcePath.parent
+    return imageSources.mapNotNull { source ->
+        if (isRemoteImagePath(source)) {
+            return@mapNotNull null
+        }
+        val sourcePathValue = Path.of(source)
+        if (sourcePathValue.isAbsolute) {
+            throw IllegalArgumentException("Image path must be relative in ${sourcePath.toAbsolutePath()}: $source")
+        }
+        val resolvedSource = sourceDir.resolve(sourcePathValue).normalize()
+        if (!Files.exists(resolvedSource) || !Files.isRegularFile(resolvedSource)) {
+            throw IllegalArgumentException("Image file not found in ${sourcePath.toAbsolutePath()}: $source")
+        }
+        LocalImage(resolvedSource, sourcePathValue.normalize())
+    }
+}
+
+private fun isRemoteImagePath(source: String): Boolean {
+    val normalized = source.lowercase()
+    return normalized.startsWith("http://") ||
+        normalized.startsWith("https://") ||
+        normalized.startsWith("data:")
 }
 
 private fun parseClozePrompt(prompt: String): List<ClozePart> {
@@ -336,24 +517,29 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         builder.append("  <qti-item-body>\n")
         when (question.type) {
             QuestionType.DESCRIPTIVE -> {
-                builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
+                builder.append("    <qti-p>")
+                appendInlineContent(builder, question.promptParts)
+                builder.append("</qti-p>\n")
                 builder.append("    <qti-extended-text-interaction response-identifier=\"RESPONSE\"/>\n")
-                appendExplanation(builder, question.explanation)
+                appendExplanation(builder, question.explanationParts)
             }
             QuestionType.CHOICE -> {
-                builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
+                builder.append("    <qti-p>")
+                appendInlineContent(builder, question.promptParts)
+                builder.append("</qti-p>\n")
                 builder.append("    <qti-choice-interaction response-identifier=\"RESPONSE\" max-choices=\"1\">\n")
                 question.options.forEachIndexed { index, option ->
                     val identifier = "CHOICE_${index + 1}"
                     builder.append(
-                        "      <qti-simple-choice identifier=\"$identifier\">${escapeXml(option.text)}</qti-simple-choice>\n",
+                        "      <qti-simple-choice identifier=\"$identifier\">",
                     )
+                    appendInlineContent(builder, option.parts)
+                    builder.append("</qti-simple-choice>\n")
                 }
                 builder.append("    </qti-choice-interaction>\n")
-                appendExplanation(builder, question.explanation)
+                appendExplanation(builder, question.explanationParts)
             }
             QuestionType.CLOZE -> {
-                val parts = parseClozePrompt(question.prompt)
                 val responseIds = if (question.blanks.size == 1) {
                     listOf("RESPONSE")
                 } else {
@@ -361,18 +547,26 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                 }
                 builder.append("    <qti-p>")
                 var blankIndex = 0
-                parts.forEach { part ->
-                    when (part) {
-                        is ClozePart.Text -> builder.append(escapeXml(part.value))
-                        is ClozePart.Blank -> {
-                            val responseId = responseIds[blankIndex]
-                            builder.append("<qti-text-entry-interaction response-identifier=\"$responseId\"/>")
-                            blankIndex += 1
+                question.promptParts.forEach { inlinePart ->
+                    when (inlinePart) {
+                        is InlineContent.Text -> {
+                            val parts = parseClozePrompt(inlinePart.value)
+                            parts.forEach { part ->
+                                when (part) {
+                                    is ClozePart.Text -> builder.append(escapeXml(part.value))
+                                    is ClozePart.Blank -> {
+                                        val responseId = responseIds[blankIndex]
+                                        builder.append("<qti-text-entry-interaction response-identifier=\"$responseId\"/>")
+                                        blankIndex += 1
+                                    }
+                                }
+                            }
                         }
+                        is InlineContent.Image -> appendImage(builder, inlinePart)
                     }
                 }
                 builder.append("</qti-p>\n")
-                appendExplanation(builder, question.explanation)
+                appendExplanation(builder, question.explanationParts)
             }
         }
 
@@ -387,13 +581,32 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         builder.append("  </qti-item-body>\n")
     }
 
-    private fun appendExplanation(builder: StringBuilder, explanation: String?) {
-        if (explanation.isNullOrBlank()) {
+    private fun appendExplanation(builder: StringBuilder, explanationParts: List<InlineContent>?) {
+        if (explanationParts == null || explanationParts.isEmpty()) {
             return
         }
         builder.append("    <qti-rubric-block view=\"candidate\">\n")
-        builder.append("      <qti-p>${escapeXml(explanation)}</qti-p>\n")
+        builder.append("      <qti-p>")
+        appendInlineContent(builder, explanationParts)
+        builder.append("</qti-p>\n")
         builder.append("    </qti-rubric-block>\n")
+    }
+
+    private fun appendInlineContent(builder: StringBuilder, parts: List<InlineContent>) {
+        parts.forEach { part ->
+            when (part) {
+                is InlineContent.Text -> builder.append(escapeXml(part.value))
+                is InlineContent.Image -> appendImage(builder, part)
+            }
+        }
+    }
+
+    private fun appendImage(builder: StringBuilder, image: InlineContent.Image) {
+        builder.append("<qti-img src=\"${escapeXml(image.source)}\" alt=\"${escapeXml(image.alt)}\"")
+        if (!image.title.isNullOrBlank()) {
+            builder.append(" title=\"${escapeXml(image.title)}\"")
+        }
+        builder.append("/>")
     }
 }
 

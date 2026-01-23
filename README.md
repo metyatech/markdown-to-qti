@@ -44,6 +44,8 @@ Options:
 - When `--input` is a directory, all `*.md` files inside it are processed.
 - Output files are written as `<input-file>.qti.xml` under `--output-dir`.
 - `--validate-only` performs XML well-formedness checks without writing files.
+- Local image files referenced in Markdown are copied to `--output-dir`, preserving
+	the relative paths.
 - Errors include the input path when possible and return a non-zero exit code.
 
 ## Configuration / Environment Variables

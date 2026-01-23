@@ -14,6 +14,15 @@ Each question is emitted as a `qti-assessment-item` with:
 
 The `qti-item-body` always contains the prompt as `qti-p`.
 
+### Inline Images
+
+Markdown image syntax embedded in `## Prompt`, `## Options`, or `## Explanation` is
+converted into `qti-img` elements inside the surrounding QTI text container.
+
+- `src` is the original image path.
+- `alt` uses the Markdown alt text (empty alt is allowed).
+- `title` is emitted when a Markdown image title is present.
+
 ## Type: descriptive
 
 Markdown:

@@ -13,6 +13,7 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import kotlin.io.path.createDirectories
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -89,6 +90,47 @@ class CliTest {
 
         assertEquals(1, exitCode)
         assertTrue(stderr.toString().contains("output"))
+    }
+
+    @Test
+    fun cli_copiesLocalImagesToOutputDir() {
+        val tempDir = Files.createTempDirectory("qti-cli-test")
+        val outputDir = Files.createTempDirectory("qti-cli-out")
+        val imagesDir = tempDir.resolve("images").createDirectories()
+        val imageFile = imagesDir.resolve("diagram.png")
+        imageFile.writeText("fake image")
+
+        val markdown = """
+            # Image Prompt
+
+            ## Type
+            descriptive
+
+            ## Prompt
+            Identify the highlighted part.
+
+            ![Alt text](images/diagram.png "Diagram")
+        """.trimIndent()
+        val inputFile = tempDir.resolve("image-prompt.md")
+        inputFile.writeText(markdown)
+
+        val exitCode = runCli(
+            arrayOf(
+                "--input",
+                inputFile.toString(),
+                "--output-dir",
+                outputDir.toString(),
+            ),
+        )
+
+        assertEquals(0, exitCode)
+        val outputFile = outputDir.resolve("image-prompt.qti.xml")
+        assertTrue(Files.exists(outputFile))
+        val outputXml = outputFile.readText()
+        assertTrue(outputXml.contains("<qti-img src=\"images/diagram.png\" alt=\"Alt text\" title=\"Diagram\"/>"))
+
+        val copiedImage = outputDir.resolve("images").resolve("diagram.png")
+        assertTrue(Files.exists(copiedImage))
     }
 }
 

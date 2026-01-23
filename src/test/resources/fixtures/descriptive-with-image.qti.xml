@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item
+    xmlns="http://www.imsglobal.org/xsd/imsqti_v3p0"
+    identifier="descriptive-with-image"
+    title="Plant Cell"
+    adaptive="false"
+    time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-item-body>
+    <qti-p>Identify the highlighted part of the plant cell. <qti-img src="images/plant-cell.png" alt="Highlighted chloroplast" title="Plant cell diagram"/></qti-p>
+    <qti-extended-text-interaction response-identifier="RESPONSE"/>
+    <qti-rubric-block view="candidate">
+      <qti-p>The highlighted part is the chloroplast. <qti-img src="images/chloroplast.png" alt="Chloroplast"/></qti-p>
+    </qti-rubric-block>
+  </qti-item-body>
+</qti-assessment-item>

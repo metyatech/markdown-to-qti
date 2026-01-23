@@ -17,6 +17,7 @@ class MarkdownToQtiGoldenTest {
         val fixtures = listOf(
             "descriptive-with-scoring",
             "descriptive-with-explanation",
+            "descriptive-with-image",
             "choice-with-scoring",
             "cloze-with-scoring",
         )
