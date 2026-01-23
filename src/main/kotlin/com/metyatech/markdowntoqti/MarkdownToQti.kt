@@ -33,6 +33,7 @@ private data class MarkdownQuestion(
     val type: QuestionType,
     val prompt: String,
     val answer: String? = null,
+    val explanation: String? = null,
     val options: List<ChoiceOption> = emptyList(),
     val blanks: List<ClozeBlank> = emptyList(),
     val scoring: List<ScoringCriterion> = emptyList(),
@@ -137,6 +138,7 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
     }
 
     val answer = sections["Answer"]?.let { normalizeSectionText(it, "Answer") }
+    val explanation = sections["Explanation"]?.let { normalizeSectionText(it, "Explanation") }
 
     val scoring = sections["Scoring"]?.let { parseScoringSection(it) } ?: emptyList()
 
@@ -147,6 +149,7 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
             type = type,
             prompt = prompt,
             answer = answer,
+            explanation = explanation,
             scoring = scoring,
         )
         QuestionType.CHOICE -> {
@@ -158,6 +161,7 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
                 title = title,
                 type = type,
                 prompt = prompt,
+                explanation = explanation,
                 options = options,
                 scoring = scoring,
             )
@@ -173,6 +177,7 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
                 title = title,
                 type = type,
                 prompt = prompt,
+                explanation = explanation,
                 blanks = blanks,
                 scoring = scoring,
             )
@@ -337,10 +342,11 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                 builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
                 builder.append("    <qti-extended-text-interaction response-identifier=\"RESPONSE\"/>\n")
                 question.answer?.let { answerText ->
-                    builder.append("    <qti-rubric-block view=\"author\">\n")
+                    builder.append("    <qti-rubric-block view=\"candidate\">\n")
                     builder.append("      <qti-p>${escapeXml(answerText)}</qti-p>\n")
                     builder.append("    </qti-rubric-block>\n")
                 }
+                appendExplanation(builder, question.explanation)
             }
             QuestionType.CHOICE -> {
                 builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
@@ -352,6 +358,7 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                     )
                 }
                 builder.append("    </qti-choice-interaction>\n")
+                appendExplanation(builder, question.explanation)
             }
             QuestionType.CLOZE -> {
                 val parts = parseClozePrompt(question.prompt)
@@ -373,6 +380,7 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                     }
                 }
                 builder.append("</qti-p>\n")
+                appendExplanation(builder, question.explanation)
             }
         }
 
@@ -385,6 +393,15 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
             builder.append("    </qti-rubric-block>\n")
         }
         builder.append("  </qti-item-body>\n")
+    }
+
+    private fun appendExplanation(builder: StringBuilder, explanation: String?) {
+        if (explanation.isNullOrBlank()) {
+            return
+        }
+        builder.append("    <qti-rubric-block view=\"candidate\">\n")
+        builder.append("      <qti-p>${escapeXml(explanation)}</qti-p>\n")
+        builder.append("    </qti-rubric-block>\n")
     }
 }
 

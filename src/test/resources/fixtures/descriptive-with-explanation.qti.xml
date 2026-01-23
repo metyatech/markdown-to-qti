@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item
+    xmlns="http://www.imsglobal.org/xsd/imsqti_v3p0"
+    identifier="descriptive-with-explanation"
+    title="Gravity Basics"
+    adaptive="false"
+    time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-item-body>
+    <qti-p>What is gravity?</qti-p>
+    <qti-extended-text-interaction response-identifier="RESPONSE"/>
+    <qti-rubric-block view="candidate">
+      <qti-p>Gravity is the force that attracts objects toward each other.</qti-p>
+    </qti-rubric-block>
+  </qti-item-body>
+</qti-assessment-item>

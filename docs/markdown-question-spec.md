@@ -35,7 +35,8 @@ Required sections:
 
 Optional sections:
 
-- `## Answer`: A reference answer or expected points to cover.
+- `## Answer`: A reference answer shown to learners.
+- `## Explanation`: A learner-facing explanation shown after answering.
 - `## Scoring`: A list of scoring criteria and point values.
 
 ## Type: choice
@@ -59,6 +60,7 @@ Constraints:
 
 Optional sections:
 
+- `## Explanation`: A learner-facing explanation shown after answering.
 - `## Scoring`: A list of scoring criteria and point values.
 
 ## Type: cloze
@@ -80,6 +82,7 @@ Constraints:
 
 Optional sections:
 
+- `## Explanation`: A learner-facing explanation shown after answering.
 - `## Scoring`: A list of scoring criteria and point values.
 
 ## Scoring
@@ -130,6 +133,9 @@ Explain the role of chlorophyll in photosynthesis.
 
 ## Answer
 Chlorophyll absorbs light energy and helps convert it into chemical energy.
+
+## Explanation
+Chlorophyll captures light so the plant can turn it into chemical energy.
 ```
 
 ### Choice

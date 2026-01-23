@@ -16,6 +16,7 @@ class MarkdownToQtiGoldenTest {
     fun convertMarkdownFixturesToQti() {
         val fixtures = listOf(
             "descriptive-with-scoring",
+            "descriptive-with-explanation",
             "choice-with-scoring",
             "cloze-with-scoring",
         )
