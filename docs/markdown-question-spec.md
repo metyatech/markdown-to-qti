@@ -27,7 +27,7 @@ value must be a single word on the line immediately after the `## Type` heading.
 
 ## Type: descriptive
 
-The prompt is free-form text. Provide an optional reference answer.
+The prompt is free-form text.
 
 Required sections:
 
@@ -35,7 +35,6 @@ Required sections:
 
 Optional sections:
 
-- `## Answer`: A reference answer shown to learners.
 - `## Explanation`: A learner-facing explanation shown after answering.
 - `## Scoring`: A list of scoring criteria and point values.
 
@@ -130,9 +129,6 @@ Explain the role of chlorophyll in photosynthesis.
 ## Scoring
 - 2: Identifies chlorophyll as a light-absorbing pigment
 - 1: Mentions conversion of light energy to chemical energy
-
-## Answer
-Chlorophyll absorbs light energy and helps convert it into chemical energy.
 
 ## Explanation
 Chlorophyll captures light so the plant can turn it into chemical energy.

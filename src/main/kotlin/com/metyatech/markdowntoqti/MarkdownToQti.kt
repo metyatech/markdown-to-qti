@@ -32,7 +32,6 @@ private data class MarkdownQuestion(
     val title: String,
     val type: QuestionType,
     val prompt: String,
-    val answer: String? = null,
     val explanation: String? = null,
     val options: List<ChoiceOption> = emptyList(),
     val blanks: List<ClozeBlank> = emptyList(),
@@ -137,7 +136,6 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
         throw IllegalArgumentException("Prompt must not be empty")
     }
 
-    val answer = sections["Answer"]?.let { normalizeSectionText(it, "Answer") }
     val explanation = sections["Explanation"]?.let { normalizeSectionText(it, "Explanation") }
 
     val scoring = sections["Scoring"]?.let { parseScoringSection(it) } ?: emptyList()
@@ -148,7 +146,6 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
             title = title,
             type = type,
             prompt = prompt,
-            answer = answer,
             explanation = explanation,
             scoring = scoring,
         )
@@ -341,11 +338,6 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
             QuestionType.DESCRIPTIVE -> {
                 builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
                 builder.append("    <qti-extended-text-interaction response-identifier=\"RESPONSE\"/>\n")
-                question.answer?.let { answerText ->
-                    builder.append("    <qti-rubric-block view=\"candidate\">\n")
-                    builder.append("      <qti-p>${escapeXml(answerText)}</qti-p>\n")
-                    builder.append("    </qti-rubric-block>\n")
-                }
                 appendExplanation(builder, question.explanation)
             }
             QuestionType.CHOICE -> {

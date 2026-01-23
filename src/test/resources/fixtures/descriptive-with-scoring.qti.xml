@@ -9,9 +9,6 @@
   <qti-item-body>
     <qti-p>Explain the role of chlorophyll in photosynthesis.</qti-p>
     <qti-extended-text-interaction response-identifier="RESPONSE"/>
-    <qti-rubric-block view="candidate">
-      <qti-p>Chlorophyll absorbs light energy and helps convert it into chemical energy.</qti-p>
-    </qti-rubric-block>
     <qti-rubric-block view="scorer">
       <qti-p>[2] Identifies chlorophyll as a light-absorbing pigment</qti-p>
       <qti-p>[1] Mentions conversion of light energy to chemical energy</qti-p>
