@@ -39,6 +39,13 @@ Options:
 - `--validate-only`: Parse and validate XML without writing files.
 - `--verbose`: Log processed files.
 
+### CLI Details
+
+- When `--input` is a directory, all `*.md` files inside it are processed.
+- Output files are written as `<input-file>.qti.xml` under `--output-dir`.
+- `--validate-only` performs XML well-formedness checks without writing files.
+- Errors include the input path when possible and return a non-zero exit code.
+
 ## Configuration / Environment Variables
 
 None yet.
