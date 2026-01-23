@@ -32,6 +32,7 @@ private data class MarkdownQuestion(
     val title: String,
     val type: QuestionType,
     val prompt: String,
+    val answer: String? = null,
     val options: List<ChoiceOption> = emptyList(),
     val blanks: List<ClozeBlank> = emptyList(),
     val scoring: List<ScoringCriterion> = emptyList(),
@@ -130,14 +131,12 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
 
     val promptSection = sections["Prompt"]
         ?: throw IllegalArgumentException("Missing ## Prompt section")
-    val prompt = promptSection
-        .dropWhile { it.isBlank() }
-        .dropLastWhile { it.isBlank() }
-        .joinToString("\n") { it.trimEnd() }
-        .trim()
+    val prompt = normalizeSectionText(promptSection, "Prompt")
     if (prompt.isBlank()) {
         throw IllegalArgumentException("Prompt must not be empty")
     }
+
+    val answer = sections["Answer"]?.let { normalizeSectionText(it, "Answer") }
 
     val scoring = sections["Scoring"]?.let { parseScoringSection(it) } ?: emptyList()
 
@@ -147,6 +146,7 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String): Markdow
             title = title,
             type = type,
             prompt = prompt,
+            answer = answer,
             scoring = scoring,
         )
         QuestionType.CHOICE -> {
@@ -255,6 +255,18 @@ private fun parseClozePrompt(prompt: String): List<ClozePart> {
     return parts
 }
 
+private fun normalizeSectionText(lines: List<String>, sectionName: String): String {
+    val text = lines
+        .dropWhile { it.isBlank() }
+        .dropLastWhile { it.isBlank() }
+        .joinToString("\n") { it.trimEnd() }
+        .trim()
+    if (text.isBlank()) {
+        throw IllegalArgumentException("$sectionName section must not be empty")
+    }
+    return text
+}
+
 private class QtiBuilder(private val question: MarkdownQuestion) {
     fun build(): String {
         val builder = StringBuilder()
@@ -324,6 +336,11 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
             QuestionType.DESCRIPTIVE -> {
                 builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
                 builder.append("    <qti-extended-text-interaction response-identifier=\"RESPONSE\"/>\n")
+                question.answer?.let { answerText ->
+                    builder.append("    <qti-rubric-block view=\"author\">\n")
+                    builder.append("      <qti-p>${escapeXml(answerText)}</qti-p>\n")
+                    builder.append("    </qti-rubric-block>\n")
+                }
             }
             QuestionType.CHOICE -> {
                 builder.append("    <qti-p>${escapeXml(question.prompt)}</qti-p>\n")
