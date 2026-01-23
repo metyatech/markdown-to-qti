@@ -9,11 +9,12 @@ IMS QTI 3.0. The authoring format is defined in:
 
 ## Setup
 
-TBD (project not implemented yet).
+- Install JDK 17+.
+- Install Gradle (CLI).
 
 ## Development Commands
 
-TBD (project not implemented yet).
+- Run tests: `gradle test`
 
 ## Configuration / Environment Variables
 

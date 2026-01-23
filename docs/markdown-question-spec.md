@@ -20,6 +20,7 @@ A question file MUST follow this structure:
   - `choice`
   - `cloze`
 - `## Prompt`: Required. The question text.
+- `## Scoring`: Optional. Scoring rubric criteria.
 
 Headings are case-sensitive and must match exactly as written above. The `Type`
 value must be a single word on the line immediately after the `## Type` heading.
@@ -35,6 +36,7 @@ Required sections:
 Optional sections:
 
 - `## Answer`: A reference answer or expected points to cover.
+- `## Scoring`: A list of scoring criteria and point values.
 
 ## Type: choice
 
@@ -55,6 +57,10 @@ Constraints:
 - Exactly one `- [x]` MUST appear.
 - Options MUST be a single flat list (no nesting).
 
+Optional sections:
+
+- `## Scoring`: A list of scoring criteria and point values.
+
 ## Type: cloze
 
 Fill-in-the-blank. Blanks are defined inline within the prompt using a marker.
@@ -71,6 +77,31 @@ Constraints:
 
 - Each `{{...}}` marker defines a blank in order of appearance.
 - To include a literal `{{` or `}}`, escape with a backslash (`\{{` or `\}}`).
+
+Optional sections:
+
+- `## Scoring`: A list of scoring criteria and point values.
+
+## Scoring
+
+The `## Scoring` section defines a rubric as a flat Markdown list. Each list
+item assigns points to a criterion.
+
+Syntax per list item:
+
+- `<points>: <criterion>`
+
+Examples:
+
+- `2: Identifies chlorophyll as a light-absorbing pigment`
+- `1.5: Mentions conversion of light energy to chemical energy`
+
+Constraints:
+
+- `<points>` MUST be a number (integer or decimal).
+- The list MUST be a single flat list (no nesting).
+- If present, `## Scoring` MUST appear after `## Prompt` and after `## Options`
+  (when the question type is `choice`).
 
 ## Common Rules
 
@@ -92,6 +123,10 @@ descriptive
 
 ## Prompt
 Explain the role of chlorophyll in photosynthesis.
+
+## Scoring
+- 2: Identifies chlorophyll as a light-absorbing pigment
+- 1: Mentions conversion of light energy to chemical energy
 
 ## Answer
 Chlorophyll absorbs light energy and helps convert it into chemical energy.

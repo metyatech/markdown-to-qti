@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item
+    xmlns="http://www.imsglobal.org/xsd/imsqti_v3p0"
+    identifier="cloze-with-scoring"
+    title="Water Formula"
+    adaptive="false"
+    time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string">
+    <qti-correct-response>
+      <qti-value>H2O</qti-value>
+    </qti-correct-response>
+  </qti-response-declaration>
+  <qti-item-body>
+    <qti-p>The chemical formula for water is <qti-text-entry-interaction response-identifier="RESPONSE"/>.</qti-p>
+    <qti-rubric-block view="scorer">
+      <qti-p>[1] Provides H2O</qti-p>
+    </qti-rubric-block>
+  </qti-item-body>
+</qti-assessment-item>
