@@ -9,8 +9,13 @@ IMS QTI 3.0. The authoring format is defined in:
 
 ## Setup
 
-- Install JDK 17+.
+- Install JDK 23 for Gradle/Kotlin builds.
 - Install Gradle (CLI).
+
+## Toolchain
+
+If you need to pin Gradle to a specific JDK, copy `gradle.properties.example` to
+`gradle.properties` and update `org.gradle.java.home` for your environment.
 
 ## Development Commands
 
