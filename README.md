@@ -5,7 +5,8 @@
 This repository will implement a tool that converts Markdown question files into
 IMS QTI 3.0. The authoring format is defined in:
 
-- `docs/markdown-question-spec.md`
+- [docs/markdown-question-spec.md](docs/markdown-question-spec.md)
+- [docs/qti-mapping.md](docs/qti-mapping.md)
 
 ## Setup
 
