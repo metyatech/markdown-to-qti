@@ -1,0 +1,14 @@
+{
+  "output": "AGENTS.md",
+  "rules": [
+    "agent-rules/rules/languages-and-writing.md",
+    "agent-rules/rules/implementation-and-coding-standards.md",
+    "agent-rules/rules/command-execution.md",
+    "agent-rules/rules/quality-testing-and-errors.md",
+    "agent-rules/rules/repository-hygiene-and-file-naming.md",
+    "agent-rules/rules/module-system.md",
+    "agent-rules/rules/agent-rules-composition.md",
+    "agent-rules/rules/readme-standards.md",
+    "agent-rules-local/rules/markdown-to-qti.md"
+  ]
+}
