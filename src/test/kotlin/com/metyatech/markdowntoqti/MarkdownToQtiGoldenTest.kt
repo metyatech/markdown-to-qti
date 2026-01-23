@@ -42,9 +42,6 @@ private fun readFixtureText(name: String): String {
     return inputStream.bufferedReader().use { it.readText() }
 }
 
-private fun convertMarkdownToQti(markdown: String, fixtureId: String): String =
-    TODO("Implement Markdown -> QTI conversion. fixtureId is a stable identifier seed.")
-
 private fun normalizeXml(xml: String): String {
     val factory = DocumentBuilderFactory.newInstance().apply {
         isNamespaceAware = true

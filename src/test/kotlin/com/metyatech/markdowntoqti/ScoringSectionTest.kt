@@ -47,11 +47,3 @@ class ScoringSectionTest {
         assertTrue(exception.message?.contains("criterion") == true)
     }
 }
-
-private data class ScoringCriterion(
-    val points: BigDecimal,
-    val criterion: String,
-)
-
-private fun parseScoringSection(lines: List<String>): List<ScoringCriterion> =
-    TODO("Implement scoring section parsing")
