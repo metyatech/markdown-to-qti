@@ -26,11 +26,6 @@ fun runCli(
     val parsed = parseArgs(args, error) ?: return 1
     val inputs = resolveInputs(parsed.inputPaths, error) ?: return 1
 
-    if (!parsed.validateOnly && parsed.outputDir == null) {
-        error.println("output directory is required unless --validate-only is set.")
-        return 1
-    }
-
     val outputDir = parsed.outputDir
     if (outputDir != null) {
         Files.createDirectories(outputDir)
@@ -46,9 +41,11 @@ fun runCli(
                 output.println("Validated: ${inputPath.toAbsolutePath()}")
             }
         } else {
-            val outputFile = outputDir!!.resolve("$identifier.qti.xml")
+            val resolvedOutputDir = outputDir ?: defaultOutputDirFor(inputPath)
+            Files.createDirectories(resolvedOutputDir)
+            val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
             outputFile.writeText(conversion.qtiXml)
-            copyLocalImages(conversion.localImages, outputDir)
+            copyLocalImages(conversion.localImages, resolvedOutputDir)
             if (parsed.verbose) {
                 output.println("Wrote: ${outputFile.toAbsolutePath()}")
             }
@@ -182,5 +179,11 @@ private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
 }
 
 private fun printUsage(error: PrintStream) {
-    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] --output-dir <dir> [--validate-only] [--verbose]")
+    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] [--output-dir <dir>] [--validate-only] [--verbose]")
+    error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
+}
+
+private fun defaultOutputDirFor(inputPath: Path): Path {
+    val parent = inputPath.toAbsolutePath().parent ?: Path.of(".").toAbsolutePath()
+    return parent.resolve("qti-out")
 }

@@ -122,7 +122,8 @@ Local image handling:
 - Image paths without a URL scheme are treated as local files.
 - Local paths MUST be relative to the Markdown file location.
 - When generating output (not `--validate-only`), local image files are copied to the output
-  directory, preserving the relative path.
+  directory, preserving the relative path. The output directory is either `--output-dir` or
+  `<input-directory>/qti-out` when omitted.
 
 ## Common Rules
 

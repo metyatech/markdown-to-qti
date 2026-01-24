@@ -1,11 +1,8 @@
 package com.metyatech.markdowntoqti
 
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.io.StringReader
 import java.io.StringWriter
 import java.nio.file.Files
-import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
@@ -72,24 +69,27 @@ class CliTest {
     }
 
     @Test
-    fun cli_requiresOutputDirWhenNotValidateOnly() {
+    fun cli_defaultsOutputDirWhenNotProvided() {
         val tempDir = Files.createTempDirectory("qti-cli-test")
         val fixtureId = "cloze-with-scoring"
         val markdown = readFixtureText("$fixtureId.md")
+        val expectedXml = readFixtureText("$fixtureId.qti.xml")
         val inputFile = tempDir.resolve("$fixtureId.md")
         inputFile.writeText(markdown)
 
-        val stderr = ByteArrayOutputStream()
         val exitCode = runCli(
             arrayOf(
                 "--input",
                 inputFile.toString(),
             ),
-            error = PrintStream(stderr),
         )
 
-        assertEquals(1, exitCode)
-        assertTrue(stderr.toString().contains("output"))
+        assertEquals(0, exitCode)
+        val outputDir = tempDir.resolve("qti-out")
+        val outputFile = outputDir.resolve("$fixtureId.qti.xml")
+        assertTrue(Files.exists(outputFile))
+        val actualXml = outputFile.readText()
+        assertEquals(normalizeXml(expectedXml), normalizeXml(actualXml))
     }
 
     @Test
@@ -131,6 +131,56 @@ class CliTest {
 
         val copiedImage = outputDir.resolve("images").resolve("diagram.png")
         assertTrue(Files.exists(copiedImage))
+    }
+
+    @Test
+    fun cli_validateOnly_withoutOutputDir_doesNotWriteOutput() {
+        val tempDir = Files.createTempDirectory("qti-cli-test")
+        val fixtureId = "choice-with-scoring"
+        val markdown = readFixtureText("$fixtureId.md")
+        val inputFile = tempDir.resolve("$fixtureId.md")
+        inputFile.writeText(markdown)
+
+        val exitCode = runCli(
+            arrayOf(
+                "--input",
+                inputFile.toString(),
+                "--validate-only",
+            ),
+        )
+
+        assertEquals(0, exitCode)
+        val outputDir = tempDir.resolve("qti-out")
+        val outputFile = outputDir.resolve("$fixtureId.qti.xml")
+        assertFalse(Files.exists(outputDir))
+        assertFalse(Files.exists(outputFile))
+    }
+
+    @Test
+    fun cli_defaultsOutputDirPerInputDirectory() {
+        val firstDir = Files.createTempDirectory("qti-cli-test-1")
+        val secondDir = Files.createTempDirectory("qti-cli-test-2")
+        val firstId = "choice-with-scoring"
+        val secondId = "descriptive-with-scoring"
+        val firstInput = firstDir.resolve("$firstId.md")
+        val secondInput = secondDir.resolve("$secondId.md")
+        firstInput.writeText(readFixtureText("$firstId.md"))
+        secondInput.writeText(readFixtureText("$secondId.md"))
+
+        val exitCode = runCli(
+            arrayOf(
+                "--input",
+                firstInput.toString(),
+                "--input",
+                secondInput.toString(),
+            ),
+        )
+
+        assertEquals(0, exitCode)
+        val firstOutput = firstDir.resolve("qti-out").resolve("$firstId.qti.xml")
+        val secondOutput = secondDir.resolve("qti-out").resolve("$secondId.qti.xml")
+        assertTrue(Files.exists(firstOutput))
+        assertTrue(Files.exists(secondOutput))
     }
 }
 

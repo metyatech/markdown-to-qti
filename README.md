@@ -26,7 +26,7 @@ If you need to pin Gradle to a specific JDK, copy `gradle.properties.example` to
 
 Generate QTI XML from one or more Markdown files:
 
-- `gradle run --args="--input path/to/question.md --output-dir path/to/out"`
+- `gradle run --args="--input path/to/question.md"`
 
 Validate inputs without writing output:
 
@@ -35,17 +35,17 @@ Validate inputs without writing output:
 Options:
 
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`).
-- `--output-dir <dir>`: Output directory for `.qti.xml` files. Required unless `--validate-only`.
+- `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
 - `--validate-only`: Parse and validate XML without writing files.
 - `--verbose`: Log processed files.
 
 ### CLI Details
 
 - When `--input` is a directory, all `*.md` files inside it are processed.
-- Output files are written as `<input-file>.qti.xml` under `--output-dir`.
+- Output files are written as `<input-file>.qti.xml` under `--output-dir` or `<input-dir>/qti-out` when omitted.
 - `--validate-only` performs XML well-formedness checks without writing files.
-- Local image files referenced in Markdown are copied to `--output-dir`, preserving
-	the relative paths.
+- Local image files referenced in Markdown are copied to the output directory, preserving
+  the relative paths.
 - Errors include the input path when possible and return a non-zero exit code.
 
 ## Configuration / Environment Variables
