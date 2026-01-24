@@ -23,6 +23,27 @@ converted into `qti-img` elements inside the surrounding QTI text container.
 - `alt` uses the Markdown alt text (empty alt is allowed).
 - `title` is emitted when a Markdown image title is present.
 
+### Scoring rubric output
+
+When `## Scoring` is present, the output uses `qti-rubric-block view="scorer"`
+with one `qti-p` per criterion. Each rubric line is formatted as:
+
+```
+[<points>] <criterion>
+```
+
+`<points>` is the numeric value from the Markdown list item (`<points>: <criterion>`),
+and `<criterion>` is the criterion text.
+
+Example output:
+
+```xml
+<qti-rubric-block view="scorer">
+  <qti-p>[2] Identifies chlorophyll as a light-absorbing pigment</qti-p>
+  <qti-p>[1] Mentions conversion of light energy to chemical energy</qti-p>
+</qti-rubric-block>
+```
+
 ## Type: descriptive
 
 Markdown:
