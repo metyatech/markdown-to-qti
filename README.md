@@ -43,6 +43,7 @@ Options:
 
 - When `--input` is a directory, all `*.md` files inside it are processed.
 - Output files are written as `<input-file>.qti.xml` under `--output-dir` or `<input-dir>/qti-out` when omitted.
+- An `assessment-test.qti.xml` file is written alongside outputs, referencing all generated items in that directory.
 - `--validate-only` performs XML well-formedness checks without writing files.
 - Local image files referenced in Markdown are copied to the output directory, preserving
   the relative paths.

@@ -15,6 +15,12 @@ Each question is emitted as a `qti-assessment-item` with:
 The `qti-item-body` contains the prompt rendered as QTI flow content. Paragraphs
 map to `qti-p`, and other block elements map to their QTI equivalents.
 
+## Assessment Test Output
+
+When generating files, the CLI also writes an `assessment-test.qti.xml` file to
+the output directory. It contains a single test part and section with item
+references for all generated `qti-assessment-item` files in that directory.
+
 ### Markdown to QTI Elements
 
 CommonMark constructs are mapped to QTI elements as follows:

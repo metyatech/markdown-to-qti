@@ -66,6 +66,8 @@ class CliTest {
         assertEquals(0, exitCode)
         val outputFile = outputDir.resolve("$fixtureId.qti.xml")
         assertFalse(Files.exists(outputFile))
+        val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
+        assertFalse(Files.exists(assessmentTest))
     }
 
     @Test
@@ -90,6 +92,13 @@ class CliTest {
         assertTrue(Files.exists(outputFile))
         val actualXml = outputFile.readText()
         assertEquals(normalizeXml(expectedXml), normalizeXml(actualXml))
+
+        val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
+        assertTrue(Files.exists(assessmentTest))
+        val assessmentXml = assessmentTest.readText()
+        assertTrue(assessmentXml.contains("qti-assessment-item-ref"))
+        assertTrue(assessmentXml.contains("identifier=\"$fixtureId\""))
+        assertTrue(assessmentXml.contains("href=\"$fixtureId.qti.xml\""))
     }
 
     @Test
@@ -131,6 +140,11 @@ class CliTest {
 
         val copiedImage = outputDir.resolve("images").resolve("diagram.png")
         assertTrue(Files.exists(copiedImage))
+
+        val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
+        assertTrue(Files.exists(assessmentTest))
+        val assessmentXml = assessmentTest.readText()
+        assertTrue(assessmentXml.contains("identifier=\"image-prompt\""))
     }
 
     @Test
@@ -154,6 +168,8 @@ class CliTest {
         val outputFile = outputDir.resolve("$fixtureId.qti.xml")
         assertFalse(Files.exists(outputDir))
         assertFalse(Files.exists(outputFile))
+        val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
+        assertFalse(Files.exists(assessmentTest))
     }
 
     @Test
@@ -177,10 +193,19 @@ class CliTest {
         )
 
         assertEquals(0, exitCode)
-        val firstOutput = firstDir.resolve("qti-out").resolve("$firstId.qti.xml")
-        val secondOutput = secondDir.resolve("qti-out").resolve("$secondId.qti.xml")
+        val firstDirOut = firstDir.resolve("qti-out")
+        val secondDirOut = secondDir.resolve("qti-out")
+        val firstOutput = firstDirOut.resolve("$firstId.qti.xml")
+        val secondOutput = secondDirOut.resolve("$secondId.qti.xml")
         assertTrue(Files.exists(firstOutput))
         assertTrue(Files.exists(secondOutput))
+
+        val firstAssessment = firstDirOut.resolve("assessment-test.qti.xml")
+        val secondAssessment = secondDirOut.resolve("assessment-test.qti.xml")
+        assertTrue(Files.exists(firstAssessment))
+        assertTrue(Files.exists(secondAssessment))
+        assertTrue(firstAssessment.readText().contains("identifier=\"$firstId\""))
+        assertTrue(secondAssessment.readText().contains("identifier=\"$secondId\""))
     }
 }
 

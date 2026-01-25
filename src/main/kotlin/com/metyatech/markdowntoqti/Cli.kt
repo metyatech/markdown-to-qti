@@ -30,6 +30,7 @@ fun runCli(
     if (outputDir != null) {
         Files.createDirectories(outputDir)
     }
+    val assessmentItemsByOutputDir = mutableMapOf<Path, MutableList<AssessmentItemRef>>()
 
     inputs.forEach { inputPath ->
         val markdown = inputPath.readText()
@@ -41,15 +42,20 @@ fun runCli(
                 output.println("Validated: ${inputPath.toAbsolutePath()}")
             }
         } else {
-            val resolvedOutputDir = outputDir ?: defaultOutputDirFor(inputPath)
+            val resolvedOutputDir = (outputDir ?: defaultOutputDirFor(inputPath)).normalize()
             Files.createDirectories(resolvedOutputDir)
             val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
             outputFile.writeText(conversion.qtiXml)
             copyLocalImages(conversion.localImages, resolvedOutputDir)
+            registerAssessmentItem(assessmentItemsByOutputDir, resolvedOutputDir, identifier)
             if (parsed.verbose) {
                 output.println("Wrote: ${outputFile.toAbsolutePath()}")
             }
         }
+    }
+
+    if (!parsed.validateOnly) {
+        writeAssessmentTests(assessmentItemsByOutputDir, output, parsed.verbose)
     }
 
     return 0
@@ -60,6 +66,11 @@ private data class CliOptions(
     val outputDir: Path?,
     val validateOnly: Boolean,
     val verbose: Boolean,
+)
+
+private data class AssessmentItemRef(
+    val identifier: String,
+    val href: String,
 )
 
 private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
@@ -186,4 +197,55 @@ private fun printUsage(error: PrintStream) {
 private fun defaultOutputDirFor(inputPath: Path): Path {
     val parent = inputPath.toAbsolutePath().parent ?: Path.of(".").toAbsolutePath()
     return parent.resolve("qti-out")
+}
+
+private fun registerAssessmentItem(
+    assessmentItemsByOutputDir: MutableMap<Path, MutableList<AssessmentItemRef>>,
+    outputDir: Path,
+    identifier: String,
+) {
+    val items = assessmentItemsByOutputDir.getOrPut(outputDir) { mutableListOf() }
+    items.add(AssessmentItemRef(identifier, "$identifier.qti.xml"))
+}
+
+private fun writeAssessmentTests(
+    assessmentItemsByOutputDir: Map<Path, List<AssessmentItemRef>>,
+    output: PrintStream,
+    verbose: Boolean,
+) {
+    assessmentItemsByOutputDir.forEach { (outputDir, items) ->
+        if (items.isEmpty()) {
+            return@forEach
+        }
+        val xml = buildAssessmentTest(items)
+        val testFile = outputDir.resolve("assessment-test.qti.xml")
+        testFile.writeText(xml)
+        if (verbose) {
+            output.println("Wrote: ${testFile.toAbsolutePath()}")
+        }
+    }
+}
+
+private fun buildAssessmentTest(items: List<AssessmentItemRef>): String {
+    val builder = StringBuilder()
+    builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    builder.append(
+        "<qti-assessment-test\n" +
+            "    xmlns=\"http://www.imsglobal.org/xsd/imsqti_v3p0\"\n" +
+            "    identifier=\"assessment-test\"\n" +
+            "    title=\"Assessment Test\">\n",
+    )
+    builder.append("  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n")
+    builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
+    items.forEach { item ->
+        builder.append("      <qti-assessment-item-ref identifier=\"")
+        builder.append(escapeXml(item.identifier))
+        builder.append("\" href=\"")
+        builder.append(escapeXml(item.href))
+        builder.append("\"/>\n")
+    }
+    builder.append("    </qti-assessment-section>\n")
+    builder.append("  </qti-test-part>\n")
+    builder.append("</qti-assessment-test>\n")
+    return builder.toString()
 }
