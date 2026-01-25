@@ -1,15 +1,45 @@
 <!-- markdownlint-disable MD025 -->
-# Languages and writing
+# AGENTS ルール運用（合成）
 
-## 言語（返答・記述）
+## 対象範囲
 
-### 回答言語
+- この `AGENTS.md` は単独で完結する前提とする。
+- 親子ディレクトリの `AGENTS.md` に依存しない（継承/優先の概念は使わない）。
+- ルールは共通ルールとして一元管理し、各プロジェクトから参照して合成する（例: 共通ルールリポジトリの `rules/` を参照）。
+- プロジェクト固有ルールが必要な場合は、プロジェクト側にローカルルール（例: `agent-rules-local/`）を配置し、ルールセット定義から参照して合成する。
 
-ユーザーへの最終返答は日本語で書く（ユーザーから別の希望がある場合はそちらを優先）。
+## 更新方針
 
-### 記述言語
+- ルール変更は共通ルール、プロジェクト固有ルール、ルールセット定義（例: `agent-ruleset.json` や ruleset bundle）に対して行い、合成ツールで `AGENTS.md` を再生成する。
+- 生成済みの `AGENTS.md` は直接編集しない（編集が必要なら元ルールへ反映する）。
+- ユーザーから「ルールを更新して」と依頼された場合、特段の指示がない限り「適切なルールモジュールとルールセットを更新し、再生成する」ことを意味する。
+- ユーザーが「常にこうして下さい」など恒常運用の指示を明示した場合は、その指示自体をルールとして適切なモジュールに追記する。
+- ユーザーが「必ず」「つねに」などの強い必須指定を含む指示を出した場合は、その指示がグローバルかプロジェクト固有かを判断し、適切なモジュールに追記して再生成する。
 
-- 特に指定がない限り、開発者向けドキュメント（例: `README.md`）、コードコメント、コミットメッセージは英語で書く。
+## ルール修正時の注意点
+
+- MECE（相互排他的かつ全体網羅的）に分類し、重複と漏れを作らない。
+- 冗長な説明や同じ内容の繰り返しを避ける（必要十分）。
+- 手順や指示は、何をすれば良いかが一読で分かる端的な表現で書く。
+- 手順以外の列挙に番号を振らない（追加/削除で保守が崩れるため）。
+- 各セクションの役割を明確にし、「どこに書くべきか」が一目で分かる構成にする。
+
+## AGENTS.md の配置
+
+- 各プロジェクトのルートに `AGENTS.md` を置く。
+- サブツリーに別プロジェクトがある場合のみ、そのルートに `AGENTS.md` を置く（同一プロジェクト内で重複配置しない）。
+
+## コマンド実行
+
+- ユーザーが明示しない限り、コマンドにラッパーやパイプを付加しない。
+- ビルド/テスト/実行は、各リポジトリの標準スクリプト/手順（`package.json`、README等）を優先する。
+
+# 配布と公開
+
+- 公開物には最低限 `LICENSE` を含める。
+- 配布物に不要なファイル（例: 生成物、テスト生成物、ローカル設定）を含めない。
+- 利用側がクリーン環境から README に書かれた手順だけで利用できる状態を担保する。
+- 公開内容が変わる場合は、バージョン情報があるなら更新し、変更点を追跡可能にする。
 
 ## 実装・技術選定
 
@@ -47,10 +77,44 @@
 - 仕様・挙動・入出力・制約・既定値・順序・命名・生成条件・上書き有無など、仕様に関わる内容は詳細かつ網羅的に記述する（要約だけにしない）。
 - Markdown ドキュメントの例は、テストケースのファイルで十分に示せる場合はテストケースを参照する。十分でない場合は、その例をテストケース化できるか検討し、可能ならテスト化して参照する。どちらも不適切な場合のみドキュメント内に例を記載する。
 
-## コマンド実行
+# Languages and writing
 
-- ユーザーが明示しない限り、コマンドにラッパーやパイプを付加しない。
-- ビルド/テスト/実行は、各リポジトリの標準スクリプト/手順（`package.json`、README等）を優先する。
+## 言語（返答・記述）
+
+### 回答言語
+
+ユーザーへの最終返答は日本語で書く（ユーザーから別の希望がある場合はそちらを優先）。
+
+### 記述言語
+
+- 特に指定がない限り、開発者向けドキュメント（例: `README.md`）、コードコメント、コミットメッセージは英語で書く。
+
+# Markdown Linking Rules
+
+## Link format
+- When a Markdown document references another local file, the link must use a
+  relative path from the Markdown file.
+
+# Multi-repo workflow
+
+## マルチリポジトリ運用
+
+- リポジトリは基本的に独立しており、変更は「影響のあるリポジトリ」に限定して行う。
+- 共通モジュール/共有ライブラリを更新した場合は、利用側リポジトリでも参照（サブモジュール/依存関係/バージョン）を更新し、必要な検証まで同じ変更セットで行う。
+
+## ブランチ/PR 運用
+
+- ブランチの指定がない場合は、現在のブランチで作業してよい。
+- `main`/`master` への直接コミット/プッシュを許可する。
+
+## 変更の局所化
+
+- 変更対象（影響範囲）を明確にし、無関係な別リポジトリへ不用意に波及させない。
+
+## 検証
+
+- 変更したリポジトリ内の手元検証を優先する（例: `npm run build`, `npm test`）。
+- 共通モジュール側の変更が利用側に影響しうる場合は、少なくとも1つの利用側リポジトリで動作確認（ビルド等）を行う。
 
 # 品質（テスト・検証・エラーハンドリング）
 
@@ -67,6 +131,7 @@
 ## テスト
 
 - 進め方: 原則として、実装や修正より先にテストを追加し、先に失敗を確認してから本実装を行う（test-first）。
+- 常に多様な入力パターンを想定したテストを作成する（必須）。
 - 最小のテストだけにせず、期待される挙動の全範囲（成功/失敗、境界値、無効入力、代表的な状態遷移）を網羅する。
 - 原則: 挙動が変わる変更（仕様追加/変更/バグ修正/リファクタ等）には、同一変更セット内で自動テスト（ユニット/統合/スナップショット等）を追加/更新する（必須）。
 - 仕様追加/変更時は、既存仕様の挙動が維持されていることを保証する回帰テストを追加/更新する（必須）。
@@ -98,10 +163,23 @@
 - 失敗を握りつぶさない（空の catch / 黙殺 / サイレントフォールバックを避ける）。
 - 回復可能なら早期 return + 明示的なエラー通知、回復不能なら明確に停止/失敗させる。
 
+## 設定検証
+
+- 設定値や外部入力（環境変数/設定ファイル/CLIオプション等）は、起動時または入力境界で検証する。
+- 誤った設定はサイレントに補正せず、「何を直せばよいか」が分かる明示的なエラーで停止する。
+
 ## ログ
 
 - ログは冗長にしないが、原因特定に必要なコンテキスト（識別子や入力条件）を含める。
 - 秘密情報/個人情報をログに出さない（必要ならマスク/分離する）。
+
+## ドキュメント（README）
+
+- すべてのリポジトリ（モジュール）に `README.md` を置く。
+- README には最低限として、概要/目的、セットアップ、開発コマンド（例: build/test/lint）、必要な環境変数/設定、公開/デプロイ手順（該当する場合）を書く。
+- ソースコード変更時は、README へ影響がないかを必ず確認する。影響がある場合は同一変更セット内で README を更新する（必須）。
+  - 影響例: 使い方/API/挙動、セットアップ手順、開発コマンド、環境変数、設定、公開/デプロイ手順、対応バージョン、破壊的変更。
+  - README 更新が不要な場合でも、「なぜ不要か」を最終返答に明記する（独断でスキップしない）。
 
 # 生成物
 
@@ -114,93 +192,3 @@
 # Naming consistency
 
 - 命名規則（大文字小文字、略語、区切り方）をリポジトリ内で一貫させ、混在があれば整合するようにリネームする。
-
-## Module system (ESM)
-
-- Always set `"type": "module"` in `package.json`.
-- Prefer ESM with `.js` extensions for JavaScript config and scripts (e.g. `next.config.js` as ESM).
-
-# AGENTS ルール運用（合成）
-
-## 対象範囲
-
-- この `AGENTS.md` は単独で完結する前提とする。
-- 親子ディレクトリの `AGENTS.md` に依存しない（継承/優先の概念は使わない）。
-- ルールは共通ルール（`agent-rules/rules/`）として管理し、各プロジェクト直下の `agent-rules/`（git submodule）から参照して合成する。
-- プロジェクト固有ルールが必要な場合は、プロジェクト側に `agent-rules-local/` 等で配置し、`agent-ruleset.json` から参照して合成する。
-
-## 更新方針
-
-- ルール変更は `agent-rules/rules/`、プロジェクト固有ルール（例: `agent-rules-local/`）、および `agent-ruleset.json` に対して行い、合成スクリプト（`agent-rules-tools/tools/compose-agents.cjs`）で `AGENTS.md` を再生成する。
-- 生成済みの `AGENTS.md` は直接編集しない（編集が必要なら元ルールへ反映する）。
-- ユーザーから「ルールを更新して」と依頼された場合、特段の指示がない限り「適切なルールモジュールとルールセットを更新し、再生成する」ことを意味する。
-- ユーザーが「常にこうして下さい」など恒常運用の指示を明示した場合は、その指示自体をルールとして適切なモジュールに追記する。
-- ユーザーが「必ず」「つねに」などの強い必須指定を含む指示を出した場合は、その指示がグローバルかプロジェクト固有かを判断し、適切なモジュールに追記して再生成する。
-
-## ルール修正時の注意点
-
-- MECE（相互排他的かつ全体網羅的）に分類し、重複と漏れを作らない。
-- 冗長な説明や同じ内容の繰り返しを避ける（必要十分）。
-- 手順や指示は、何をすれば良いかが一読で分かる端的な表現で書く。
-- 手順以外の列挙に番号を振らない（追加/削除で保守が崩れるため）。
-- 各セクションの役割を明確にし、「どこに書くべきか」が一目で分かる構成にする。
-
-## AGENTS.md の配置
-
-- 各プロジェクトのルートに `AGENTS.md` を置く。
-- サブツリーに別プロジェクトがある場合のみ、そのルートに `AGENTS.md` を置く（同一プロジェクト内で重複配置しない）。
-
-# Markdown Linking Rules
-
-## Link format
-- When a Markdown document references another local file, the link must use a
-  relative path from the Markdown file.
-
-## ドキュメント（README）
-
-- すべてのリポジトリ（モジュール）に `README.md` を置く。
-- README には最低限として、概要/目的、セットアップ、開発コマンド（例: build/test/lint）、必要な環境変数/設定、公開/デプロイ手順（該当する場合）を書く。
-- ソースコード変更時は、README へ影響がないかを必ず確認する。影響がある場合は同一変更セット内で README を更新する（必須）。
-  - 影響例: 使い方/API/挙動、セットアップ手順、開発コマンド、環境変数、設定、公開/デプロイ手順、対応バージョン、破壊的変更。
-  - README 更新が不要な場合でも、「なぜ不要か」を最終返答に明記する（独断でスキップしない）。
-
-# Project Rules: markdown-to-qti (Kotlin)
-
-## Scope
-
-- This repository will implement a tool that converts Markdown content into IMS QTI 3.0.
-- Prioritize correctness of QTI 3.0 output and a clean internal data model.
-
-## Kotlin / Gradle conventions
-
-- Prefer Kotlin (JVM) with Gradle.
-- Keep the entrypoint small; put logic into testable functions/classes.
-- Favor immutable data, explicit types at boundaries, and clear error types.
-
-## QTI 3.0 output rules
-
-- Output must be valid QTI 3.0 XML (well-formed, schema-aligned).
-- Keep identifiers stable and deterministic (avoid random IDs unless explicitly required).
-- When behavior is ambiguous, prefer standards-compliant conservative output and document the decision.
-
-## Markdown conversion behavior
-
-- Define supported Markdown features explicitly (e.g., headings, lists, code blocks, inline formatting).
-- If a requested Markdown construct cannot be represented in QTI, do not implement it and explicitly state this in the response.
-- Unsupported constructs should fail fast with actionable messages, or be safely downgraded with clear warnings.
-- Preserve exact formatting as much as possible when mapping to QTI.
-
-## Testing expectations
-
-- Add unit tests for parsing/mapping rules.
-- Add golden tests for QTI XML output (compare normalized XML).
-- Include a few end-to-end fixtures (Markdown input -> QTI output) under a dedicated test folder.
-
-## CLI / UX
-
-- Provide a simple CLI with:
-  - input path(s)
-  - output directory
-  - validation mode (validate-only)
-  - verbose logging
-- Error messages must include the source location when possible (file + line/column).
