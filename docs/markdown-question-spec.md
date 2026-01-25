@@ -110,8 +110,7 @@ Syntax per list item:
 
 Examples:
 
-- `2: Identifies chlorophyll as a light-absorbing pigment`
-- `1.5: Mentions conversion of light energy to chemical energy`
+- See [../src/test/resources/fixtures/descriptive-with-scoring.md](../src/test/resources/fixtures/descriptive-with-scoring.md).
 
 Constraints:
 
@@ -150,64 +149,23 @@ Local image handling:
 
 ## Examples
 
-### Descriptive
+Examples are provided as test fixtures:
 
-```markdown
-# Photosynthesis Basics
-
-## Type
-descriptive
-
-## Prompt
-Explain the role of chlorophyll in photosynthesis.
-
-## Scoring
-- 2: Identifies chlorophyll as a light-absorbing pigment
-- 1: Mentions conversion of light energy to chemical energy
-
-## Explanation
-Chlorophyll captures light so the plant can turn it into chemical energy.
-```
-
-### Choice
-
-```markdown
-# Prime Number
-
-## Type
-choice
-
-## Prompt
-Which number is prime?
-
-## Options
-- [ ] 9
-- [x] 11
-- [ ] 21
-```
-
-### Prompt with Image
-
-```markdown
-# Plant Cell
-
-## Type
-descriptive
-
-## Prompt
-Identify the highlighted part of the plant cell.
-
-![Highlighted chloroplast](images/plant-cell.png "Plant cell diagram")
-```
-
-### Cloze
-
-```markdown
-# Water Formula
-
-## Type
-cloze
-
-## Prompt
-The chemical formula for water is {{H2O}}.
-```
+- Descriptive with scoring:
+  - Markdown: [../src/test/resources/fixtures/descriptive-with-scoring.md](../src/test/resources/fixtures/descriptive-with-scoring.md)
+  - QTI: [../src/test/resources/fixtures/descriptive-with-scoring.qti.xml](../src/test/resources/fixtures/descriptive-with-scoring.qti.xml)
+- Descriptive with explanation:
+  - Markdown: [../src/test/resources/fixtures/descriptive-with-explanation.md](../src/test/resources/fixtures/descriptive-with-explanation.md)
+  - QTI: [../src/test/resources/fixtures/descriptive-with-explanation.qti.xml](../src/test/resources/fixtures/descriptive-with-explanation.qti.xml)
+- Descriptive with image:
+  - Markdown: [../src/test/resources/fixtures/descriptive-with-image.md](../src/test/resources/fixtures/descriptive-with-image.md)
+  - QTI: [../src/test/resources/fixtures/descriptive-with-image.qti.xml](../src/test/resources/fixtures/descriptive-with-image.qti.xml)
+- Choice with scoring:
+  - Markdown: [../src/test/resources/fixtures/choice-with-scoring.md](../src/test/resources/fixtures/choice-with-scoring.md)
+  - QTI: [../src/test/resources/fixtures/choice-with-scoring.qti.xml](../src/test/resources/fixtures/choice-with-scoring.qti.xml)
+- Cloze with scoring:
+  - Markdown: [../src/test/resources/fixtures/cloze-with-scoring.md](../src/test/resources/fixtures/cloze-with-scoring.md)
+  - QTI: [../src/test/resources/fixtures/cloze-with-scoring.qti.xml](../src/test/resources/fixtures/cloze-with-scoring.qti.xml)
+- Cloze with code blanks:
+  - Markdown: [../src/test/resources/fixtures/cloze-with-code.md](../src/test/resources/fixtures/cloze-with-code.md)
+  - QTI: [../src/test/resources/fixtures/cloze-with-code.qti.xml](../src/test/resources/fixtures/cloze-with-code.qti.xml)
