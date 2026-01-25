@@ -18,6 +18,7 @@ class MarkdownToQtiGoldenTest {
             "descriptive-with-scoring",
             "descriptive-with-explanation",
             "descriptive-with-image",
+            "descriptive-with-markdown",
             "choice-with-scoring",
             "cloze-with-scoring",
         )

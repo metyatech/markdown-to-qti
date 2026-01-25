@@ -48,6 +48,14 @@ Options:
   the relative paths.
 - Errors include the input path when possible and return a non-zero exit code.
 
+## Markdown Support
+
+Prompt, options, and explanation content are parsed as CommonMark with GFM-style
+tables, strikethrough, and task lists enabled. The supported constructs are
+mapped to QTI elements as described in `docs/qti-mapping.md`.
+
+Raw HTML blocks/inline HTML are not supported and will raise an error.
+
 ## Configuration / Environment Variables
 
 None yet.

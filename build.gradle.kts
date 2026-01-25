@@ -18,6 +18,11 @@ repositories {
 
 dependencies {
     val junitVersion = "6.0.2"
+    val commonmarkVersion = "0.21.0"
+    implementation("org.commonmark:commonmark:$commonmarkVersion")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:$commonmarkVersion")
+    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:$commonmarkVersion")
+    implementation("org.commonmark:commonmark-ext-task-list-items:$commonmarkVersion")
     testImplementation(platform("org.junit:junit-bom:$junitVersion"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")

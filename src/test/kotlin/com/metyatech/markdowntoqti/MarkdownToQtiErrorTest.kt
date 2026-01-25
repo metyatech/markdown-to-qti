@@ -230,7 +230,7 @@ class MarkdownToQtiErrorTest {
             convertMarkdownToQti(markdown, "invalid-option")
         }
 
-        assertTrue(exception.message?.contains("Invalid option format") == true)
+        assertTrue(exception.message?.contains("Options must use task list items") == true)
     }
 
     @Test
@@ -335,7 +335,7 @@ class MarkdownToQtiErrorTest {
     }
 
     @Test
-    fun convertMarkdownToQti_rejectsInvalidImageSyntaxMissingParen() {
+    fun convertMarkdownToQti_rejectsRawHtmlBlocks() {
         val markdown = """
             # Title
 
@@ -343,33 +343,14 @@ class MarkdownToQtiErrorTest {
             descriptive
 
             ## Prompt
-            ![Alt](images/example.png
+            <div>Raw HTML</div>
         """.trimIndent()
 
         val exception = assertThrows(IllegalArgumentException::class.java) {
-            convertMarkdownToQti(markdown, "image-missing-paren")
+            convertMarkdownToQti(markdown, "raw-html")
         }
 
-        assertTrue(exception.message?.contains("missing ')' ") == true)
-    }
-
-    @Test
-    fun convertMarkdownToQti_rejectsImagePathWithSpacesWithoutBrackets() {
-        val markdown = """
-            # Title
-
-            ## Type
-            descriptive
-
-            ## Prompt
-            ![Alt](images/with space.png)
-        """.trimIndent()
-
-        val exception = assertThrows(IllegalArgumentException::class.java) {
-            convertMarkdownToQti(markdown, "image-path-spaces")
-        }
-
-        assertTrue(exception.message?.contains("Image path must not contain spaces") == true)
+        assertTrue(exception.message?.contains("Raw HTML") == true)
     }
 
     @Test

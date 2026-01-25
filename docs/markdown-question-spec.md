@@ -25,6 +25,20 @@ A question file MUST follow this structure:
 Headings are case-sensitive and must match exactly as written above. The `Type`
 value must be a single word on the line immediately after the `## Type` heading.
 
+## Markdown Rendering
+
+Content inside `## Prompt`, `## Options`, and `## Explanation` is parsed as CommonMark.
+In addition, the following CommonMark-compatible extensions are supported:
+
+- Strikethrough (`~~text~~`)
+- GFM tables
+- GFM task list items (`- [ ]` / `- [x]`)
+
+Supported constructs are converted to QTI elements (see `qti-mapping.md`). Raw
+HTML blocks or inline HTML are not supported and will cause a conversion error.
+
+Section headings use `##`, so headings within content MUST use `###` or deeper.
+
 ## Type: descriptive
 
 The prompt is free-form text.

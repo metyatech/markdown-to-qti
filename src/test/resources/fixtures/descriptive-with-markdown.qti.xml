@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item
+    xmlns="http://www.imsglobal.org/xsd/imsqti_v3p0"
+    identifier="descriptive-with-markdown"
+    title="Markdown Features"
+    adaptive="false"
+    time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-item-body>
+    <qti-p>This has <qti-strong>bold</qti-strong>, <qti-em>italic</qti-em>, <qti-del>strike</qti-del>, and <qti-code>code</qti-code>. A <qti-a href="https://example.com" title="Example">link</qti-a> is here.</qti-p>
+    <qti-h3>Subheading</qti-h3>
+    <qti-p>Paragraph under subheading.</qti-p>
+    <qti-blockquote>
+      <qti-p>Quoted <qti-strong>text</qti-strong> with <qti-code>code</qti-code>.</qti-p>
+    </qti-blockquote>
+    <qti-ul>
+      <qti-li>
+        <qti-p>Item one</qti-p>
+      </qti-li>
+      <qti-li>
+        <qti-p>[ ] Task open</qti-p>
+      </qti-li>
+      <qti-li>
+        <qti-p>[x] Task done</qti-p>
+      </qti-li>
+    </qti-ul>
+    <qti-ol>
+      <qti-li>
+        <qti-p>First</qti-p>
+      </qti-li>
+      <qti-li>
+        <qti-p>Second</qti-p>
+      </qti-li>
+    </qti-ol>
+    <qti-hr/>
+    <qti-pre><qti-code>val answer = 42
+</qti-code></qti-pre>
+    <qti-table>
+      <qti-thead>
+        <qti-tr><qti-th style="text-align: left;">Left</qti-th><qti-th style="text-align: right;">Right</qti-th></qti-tr>
+      </qti-thead>
+      <qti-tbody>
+        <qti-tr><qti-td style="text-align: left;">A</qti-td><qti-td style="text-align: right;">B</qti-td></qti-tr>
+        <qti-tr><qti-td style="text-align: left;">C</qti-td><qti-td style="text-align: right;">D</qti-td></qti-tr>
+      </qti-tbody>
+    </qti-table>
+    <qti-extended-text-interaction response-identifier="RESPONSE"/>
+  </qti-item-body>
+</qti-assessment-item>

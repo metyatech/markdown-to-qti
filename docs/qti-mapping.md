@@ -12,7 +12,29 @@ Each question is emitted as a `qti-assessment-item` with:
 - `title`: the `# <title>` heading.
 - `adaptive="false"`, `time-dependent="false"`.
 
-The `qti-item-body` always contains the prompt as `qti-p`.
+The `qti-item-body` contains the prompt rendered as QTI flow content. Paragraphs
+map to `qti-p`, and other block elements map to their QTI equivalents.
+
+### Markdown to QTI Elements
+
+CommonMark constructs are mapped to QTI elements as follows:
+
+- Paragraphs → `qti-p`
+- Headings (`###`+) → `qti-h3` ... `qti-h6`
+- Emphasis → `qti-em`
+- Strong → `qti-strong`
+- Strikethrough → `qti-del`
+- Links → `qti-a` (uses `href` and optional `title`)
+- Inline code → `qti-code`
+- Code blocks → `qti-pre` + `qti-code`
+- Blockquotes → `qti-blockquote`
+- Bullet lists → `qti-ul` / `qti-li`
+- Ordered lists → `qti-ol` / `qti-li` (uses `start` when needed)
+- Task lists → `qti-ul` / `qti-li` with `[ ]` or `[x]` prefix text
+- Tables → `qti-table` / `qti-thead` / `qti-tbody` / `qti-tr` / `qti-th` / `qti-td`
+- Horizontal rules → `qti-hr`
+
+Raw HTML blocks/inline HTML are rejected.
 
 ### Inline Images
 
