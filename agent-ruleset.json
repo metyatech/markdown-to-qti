@@ -1,3 +1,4 @@
 {
-  "output": "AGENTS.md"
+  "output": "AGENTS.md",
+  "rules": ["agent-rules-local/rules/markdown-to-qti.md"]
 }
