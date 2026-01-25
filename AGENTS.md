@@ -95,6 +95,14 @@
 
 - 生成物（例: `build/`, `dist/`, `node_modules/`）は原則コミットしない（各リポジトリの `.gitignore` に従う）。
 
+# Naming alignment
+
+- 機能/内容とファイル名・フォルダ名が一致しない場合は、適切な名称にリネームして整合させる。
+
+# Naming consistency
+
+- 命名規則（大文字小文字、略語、区切り方）をリポジトリ内で一貫させ、混在があれば整合するようにリネームする。
+
 ## Module system (ESM)
 
 - Always set `"type": "module"` in `package.json`.
@@ -129,6 +137,12 @@
 
 - 各プロジェクトのルートに `AGENTS.md` を置く。
 - サブツリーに別プロジェクトがある場合のみ、そのルートに `AGENTS.md` を置く（同一プロジェクト内で重複配置しない）。
+
+# Markdown Linking Rules
+
+## Link format
+- When a Markdown document references another local file, the link must use a
+  relative path from the Markdown file.
 
 ## ドキュメント（README）
 

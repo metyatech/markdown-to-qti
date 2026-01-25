@@ -8,6 +8,7 @@
     "agent-rules/rules/repository-hygiene-and-file-naming.md",
     "agent-rules/rules/module-system.md",
     "agent-rules/rules/agent-rules-composition.md",
+    "agent-rules/rules/markdown-linking.md",
     "agent-rules/rules/readme-standards.md",
     "agent-rules-local/rules/markdown-to-qti.md"
   ]
