@@ -266,10 +266,15 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         )
 
         appendResponseDeclaration(builder)
+        appendOutcomeDeclarations(builder)
         appendItemBody(builder)
+        appendResponseProcessing(builder)
+        appendModalFeedback(builder)
         builder.append("</qti-assessment-item>\n")
         return builder.toString()
     }
+
+    private fun hasExplanation(): Boolean = question.explanation?.xml?.isNotBlank() == true
 
     private fun appendResponseDeclaration(builder: StringBuilder) {
         when (question.type) {
@@ -315,13 +320,19 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         }
     }
 
+    private fun appendOutcomeDeclarations(builder: StringBuilder) {
+        if (!hasExplanation()) {
+            return
+        }
+        builder.append("  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n")
+    }
+
     private fun appendItemBody(builder: StringBuilder) {
         builder.append("  <qti-item-body>\n")
         appendXml(builder, question.prompt.xml)
         when (question.type) {
             QuestionType.DESCRIPTIVE -> {
                 builder.append("    <qti-extended-text-interaction response-identifier=\"RESPONSE\"/>\n")
-                appendExplanation(builder, question.explanation)
             }
             QuestionType.CHOICE -> {
                 builder.append("    <qti-choice-interaction response-identifier=\"RESPONSE\" max-choices=\"1\">\n")
@@ -339,11 +350,8 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                     }
                 }
                 builder.append("    </qti-choice-interaction>\n")
-                appendExplanation(builder, question.explanation)
             }
-            QuestionType.CLOZE -> {
-                appendExplanation(builder, question.explanation)
-            }
+            QuestionType.CLOZE -> Unit
         }
 
         if (question.scoring.isNotEmpty()) {
@@ -359,13 +367,27 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         builder.append("  </qti-item-body>\n")
     }
 
-    private fun appendExplanation(builder: StringBuilder, explanation: RenderedMarkdown?) {
+    private fun appendResponseProcessing(builder: StringBuilder) {
+        if (!hasExplanation()) {
+            return
+        }
+        builder.append("  <qti-response-processing>\n")
+        builder.append("    <qti-set-outcome-value identifier=\"FEEDBACK\">\n")
+        builder.append("      <qti-base-value base-type=\"identifier\">EXPLANATION</qti-base-value>\n")
+        builder.append("    </qti-set-outcome-value>\n")
+        builder.append("  </qti-response-processing>\n")
+    }
+
+    private fun appendModalFeedback(builder: StringBuilder) {
+        val explanation = question.explanation
         if (explanation == null || explanation.xml.isBlank()) {
             return
         }
-        builder.append("    <qti-rubric-block view=\"candidate\">\n")
+        builder.append("  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" identifier=\"EXPLANATION\" show-hide=\"show\">\n")
+        builder.append("    <qti-content-body>\n")
         appendXml(builder, explanation.xml)
-        builder.append("    </qti-rubric-block>\n")
+        builder.append("    </qti-content-body>\n")
+        builder.append("  </qti-modal-feedback>\n")
     }
 
     private fun appendXml(builder: StringBuilder, xml: String) {

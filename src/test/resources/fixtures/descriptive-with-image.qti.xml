@@ -6,11 +6,19 @@
     adaptive="false"
     time-dependent="false">
   <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-outcome-declaration identifier="FEEDBACK" cardinality="single" base-type="identifier"/>
   <qti-item-body>
     <qti-p>Identify the highlighted part of the plant cell. <qti-img src="images/plant-cell.png" alt="Highlighted chloroplast" title="Plant cell diagram"/></qti-p>
     <qti-extended-text-interaction response-identifier="RESPONSE"/>
-    <qti-rubric-block view="candidate">
-      <qti-p>The highlighted part is the chloroplast. <qti-img src="images/chloroplast.png" alt="Chloroplast"/></qti-p>
-    </qti-rubric-block>
   </qti-item-body>
+  <qti-response-processing>
+    <qti-set-outcome-value identifier="FEEDBACK">
+      <qti-base-value base-type="identifier">EXPLANATION</qti-base-value>
+    </qti-set-outcome-value>
+  </qti-response-processing>
+  <qti-modal-feedback outcome-identifier="FEEDBACK" identifier="EXPLANATION" show-hide="show">
+    <qti-content-body>
+      <qti-p>The highlighted part is the chloroplast. <qti-img src="images/chloroplast.png" alt="Chloroplast"/></qti-p>
+    </qti-content-body>
+  </qti-modal-feedback>
 </qti-assessment-item>

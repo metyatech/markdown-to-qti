@@ -15,6 +15,25 @@ Each question is emitted as a `qti-assessment-item` with:
 The `qti-item-body` contains the prompt rendered as QTI flow content. Paragraphs
 map to `qti-p`, and other block elements map to their QTI equivalents.
 
+## Explanation Output
+
+When `## Explanation` is present, the explanation is emitted as post-response
+feedback using `qti-modal-feedback` (not inside `qti-item-body`).
+
+The output includes:
+
+- `qti-outcome-declaration identifier="FEEDBACK"` with
+  `cardinality="single"` and `base-type="identifier"`.
+- `qti-response-processing` that sets `FEEDBACK` to `EXPLANATION`.
+- `qti-modal-feedback outcome-identifier="FEEDBACK" identifier="EXPLANATION"
+  show-hide="show"` containing a `qti-content-body` with the rendered
+  explanation flow content.
+
+Reference fixtures:
+
+- Markdown: [../src/test/resources/fixtures/descriptive-with-explanation.md](../src/test/resources/fixtures/descriptive-with-explanation.md)
+- QTI: [../src/test/resources/fixtures/descriptive-with-explanation.qti.xml](../src/test/resources/fixtures/descriptive-with-explanation.qti.xml)
+
 ## Assessment Test Output
 
 When generating files (not `--validate-only`), the CLI also writes an
@@ -126,7 +145,7 @@ QTI:
 
 Optional:
 
-- `## Explanation` → `qti-rubric-block view="candidate"` containing a `qti-p`.
+- `## Explanation` → `qti-modal-feedback` (see [Explanation Output](#explanation-output)).
 - `## Scoring` → `qti-rubric-block view="scorer"` with one `qti-p` per criterion.
 
 ## Type: choice
@@ -143,7 +162,7 @@ QTI:
 
 Optional:
 
-- `## Explanation` → `qti-rubric-block view="candidate"`.
+- `## Explanation` → `qti-modal-feedback` (see [Explanation Output](#explanation-output)).
 - `## Scoring` → `qti-rubric-block view="scorer"`.
 
 ## Type: cloze
@@ -163,7 +182,7 @@ QTI:
 
 Optional:
 
-- `## Explanation` → `qti-rubric-block view="candidate"`.
+- `## Explanation` → `qti-modal-feedback` (see [Explanation Output](#explanation-output)).
 - `## Scoring` → `qti-rubric-block view="scorer"`.
 
 ## Examples
