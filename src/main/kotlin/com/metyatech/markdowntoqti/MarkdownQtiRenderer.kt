@@ -319,9 +319,39 @@ internal class MarkdownQtiRenderer(
     }
 
     private fun renderCodeBlock(literal: String, builder: StringBuilder, state: RenderState) {
-        builder.append("<qti-pre><qti-code>")
-        builder.append(escapeXml(decodeClozeEscapes(literal, state.clozeHandling)))
-        builder.append("</qti-code></qti-pre>\n")
+        builder.append("<qti-pre>")
+        appendCodeFragments(literal, builder, state)
+        builder.append("</qti-pre>\n")
+    }
+
+    private fun renderInlineCode(literal: String, builder: StringBuilder, state: RenderState) {
+        appendCodeFragments(literal, builder, state)
+    }
+
+    private fun appendCodeFragments(literal: String, builder: StringBuilder, state: RenderState) {
+        if (state.clozeHandling != ClozeHandling.ENABLED) {
+            builder.append("<qti-code>")
+            builder.append(escapeXml(decodeClozeEscapes(literal, state.clozeHandling)))
+            builder.append("</qti-code>")
+            return
+        }
+        val parts = parseClozePrompt(literal)
+        parts.forEach { part ->
+            when (part) {
+                is ClozePart.Text -> {
+                    builder.append("<qti-code>")
+                    builder.append(escapeXml(decodeClozeEscapes(part.value, state.clozeHandling)))
+                    builder.append("</qti-code>")
+                }
+                is ClozePart.Blank -> {
+                    val responseId = state.responseIds[state.blankIndex]
+                    builder.append("<qti-text-entry-interaction response-identifier=\"")
+                    builder.append(responseId)
+                    builder.append("\"/>")
+                    state.blankIndex += 1
+                }
+            }
+        }
     }
 
     private fun renderTable(node: TableBlock, builder: StringBuilder, context: RenderContext, state: RenderState) {
@@ -404,11 +434,7 @@ internal class MarkdownQtiRenderer(
                 renderInlineChildren(node, builder, context, state)
                 builder.append("</qti-del>")
             }
-            is Code -> {
-                builder.append("<qti-code>")
-                builder.append(escapeXml(decodeClozeEscapes(node.literal, state.clozeHandling)))
-                builder.append("</qti-code>")
-            }
+            is Code -> renderInlineCode(node.literal, builder, state)
             is Link -> renderLink(node, builder, context, state)
             is Image -> renderImage(node, builder, context, state)
             is SoftLineBreak -> builder.append("\n")
@@ -518,7 +544,21 @@ internal class MarkdownQtiRenderer(
                     val parts = parseClozePrompt(node.literal)
                     parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
                 }
-                is Code, is FencedCodeBlock, is IndentedCodeBlock -> return
+                is Code -> {
+                    val parts = parseClozePrompt(node.literal)
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    return
+                }
+                is FencedCodeBlock -> {
+                    val parts = parseClozePrompt(node.literal)
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    return
+                }
+                is IndentedCodeBlock -> {
+                    val parts = parseClozePrompt(node.literal)
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    return
+                }
             }
             node.children().forEach { child -> visit(child) }
         }

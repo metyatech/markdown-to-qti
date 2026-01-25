@@ -92,6 +92,7 @@ Constraints:
 
 - Each `{{...}}` marker defines a blank in order of appearance.
 - To include a literal `{{` or `}}`, escape with a backslash (`\{{` or `\}}`).
+- `{{...}}` markers inside inline code or code blocks are also treated as blanks.
 
 Optional sections:
 

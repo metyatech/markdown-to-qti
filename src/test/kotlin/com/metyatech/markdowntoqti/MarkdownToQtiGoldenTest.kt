@@ -20,6 +20,7 @@ class MarkdownToQtiGoldenTest {
             "descriptive-with-image",
             "descriptive-with-markdown",
             "choice-with-scoring",
+            "cloze-with-code",
             "cloze-with-scoring",
         )
 

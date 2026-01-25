@@ -126,6 +126,8 @@ QTI:
 - `qti-response-declaration` with `base-type="string"`, `cardinality="single"`.
 - `qti-text-entry-interaction` inlined where each `{{...}}` appears.
 - The correct answer uses the text inside `{{...}}`.
+- `{{...}}` markers inside inline code or code blocks are treated as blanks and
+  rendered as `qti-text-entry-interaction` alongside `qti-code`.
 
 Optional:
 
