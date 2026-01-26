@@ -1,3 +1,0 @@
-[submodule "agent-rules"]
-	path = agent-rules
-	url = https://github.com/metyatech/agent-rules.git

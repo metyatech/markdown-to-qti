@@ -1,4 +1,10 @@
 <!-- markdownlint-disable MD025 -->
+# Tool Rules (compose-agentsmd)
+- Before starting any work, run `compose-agentsmd` from the project root.
+- To update shared rules, run `compose-agentsmd edit-rules`, edit the workspace rules, then run `compose-agentsmd apply-rules`.
+- Do not edit `AGENTS.md` directly; update the source rules and regenerate.
+- When updating rules, include a detailed summary of what changed (added/removed/modified items) in the final response.
+
 # AGENTS ルール運用（合成）
 
 ## 対象範囲
@@ -12,6 +18,7 @@
 
 - ルール変更は共通ルール、プロジェクト固有ルール、ルールセット定義（例: `agent-ruleset.json` や ruleset bundle）に対して行い、合成ツールで `AGENTS.md` を再生成する。
 - 生成済みの `AGENTS.md` は直接編集しない（編集が必要なら元ルールへ反映する）。
+- `AGENTS.md` は生成物だが例外として `.gitignore` に追加せず、再生成してコミットする。
 - ユーザーから「ルールを更新して」と依頼された場合、特段の指示がない限り「適切なルールモジュールとルールセットを更新し、再生成する」ことを意味する。
 - ユーザーが「常にこうして下さい」など恒常運用の指示を明示した場合は、その指示自体をルールとして適切なモジュールに追記する。
 - ユーザーが「必ず」「つねに」などの強い必須指定を含む指示を出した場合は、その指示がグローバルかプロジェクト固有かを判断し、適切なモジュールに追記して再生成する。
@@ -29,10 +36,22 @@
 - 各プロジェクトのルートに `AGENTS.md` を置く。
 - サブツリーに別プロジェクトがある場合のみ、そのルートに `AGENTS.md` を置く（同一プロジェクト内で重複配置しない）。
 
+# CLI behavior standards
+
+- Provide `--help`/`-h` with clear usage, options, and examples.
+- Provide --version so automation can pin or verify installed versions.
+- Use -V for version and reserve -v for --verbose.
+- When the CLI reads or writes data, support stdin/stdout piping and allow output to be redirected (e.g., `--output` when files are created).
+- Offer a machine-readable output mode (e.g., `--json`) when the CLI emits structured data.
+- For actions that modify or delete data, provide a safe preview (`--dry-run`) and an explicit confirmation bypass (`--yes`/`--force`).
+- Provide controllable logging (`--quiet`, `--verbose`, or `--trace`) so users can diagnose failures without changing code.
+- Use deterministic exit codes (0 success, non-zero failure) and avoid silent fallbacks.
+
 ## コマンド実行
 
 - ユーザーが明示しない限り、コマンドにラッパーやパイプを付加しない。
 - ビルド/テスト/実行は、各リポジトリの標準スクリプト/手順（`package.json`、README等）を優先する。
+- When running git commands that could open an editor, avoid interactive prompts by using `--no-edit` where applicable or setting `GIT_EDITOR=true` for that command.
 
 # 配布と公開
 
@@ -40,6 +59,29 @@
 - 配布物に不要なファイル（例: 生成物、テスト生成物、ローカル設定）を含めない。
 - 利用側がクリーン環境から README に書かれた手順だけで利用できる状態を担保する。
 - 公開内容が変わる場合は、バージョン情報があるなら更新し、変更点を追跡可能にする。
+
+## GitHub リポジトリの公開情報
+
+- 外部公開リポジトリでは、GitHub 側の Description / Topics / Homepage を必ず設定する。
+- GitHub 上での運用に必要なファイルをリポジトリ内に用意する。
+- `.github/workflows/ci.yml`
+- `.github/ISSUE_TEMPLATE/bug_report.md`
+- `.github/ISSUE_TEMPLATE/feature_request.md`
+- `.github/pull_request_template.md`
+- `SECURITY.md`
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- CI は、当該リポジトリの標準コマンド（例: `npm run lint`, `npm test`）を実行する構成にする。
+
+## Release 運用
+
+- 公開リポジトリでは `CHANGELOG.md` を用意し、公開内容の変更を追跡可能にする。
+- 公開（npm 等）を行ったら、対応する Git タグ（例: `v1.2.3`）を作成して push する。
+- GitHub Releases を作成し、本文は `CHANGELOG.md` の該当バージョンを基準に記述する。
+- バージョンは `package.json`（等の管理対象）と Git タグの間で不整合を起こさない。
+- When bumping a version, always create the GitHub Release and publish the package (e.g., npm) as part of the same update.
+- For npm publishing, ask the user to run `npm publish` instead of executing it directly.
+- Before publishing, run any required prep commands (e.g., `npm install`, `npm test`, `npm pack --dry-run`) and only attempt `npm publish` once the environment is ready. If authentication errors occur, ask the user to complete the publish step.
 
 ## 実装・技術選定
 
@@ -51,6 +93,8 @@
 - ただし、目的と釣り合わない大改修や無関係な改善はしない。
 - 不明点や判断が分かれる点は、独断で進めず確認する。
 - 推測だけで判断して進めない。根拠が不足している場合は確認する。
+- 原因・根拠を未確認のまま「可能性が高い」などの推測で実装・修正しない。まず事実確認し、確認できない場合はユーザーに確認する。
+- Externalize long embedded strings/templates/rules into separate files when possible to keep code readable and maintainable.
 
 ### 意思決定の優先順位
 
@@ -66,6 +110,7 @@
 - 意図が分かる命名にする（曖昧な省略や「Utils」的な雑多化を避ける）。
 - ハードコードを避け、設定/定数/データへ寄せられるものは寄せる（変更点を1箇所に集約する）。
 - 変更により不要になったコード/ヘルパー/分岐/コメント/暫定対応は、指示がなくても削除する（残すか迷う場合は確認する）。
+- 未使用の関数/型/定数/ファイルは残さず削除する（意図的に残す場合は理由を明記する）。
 
 ## コーディング規約
 
@@ -75,19 +120,24 @@
 ## ドキュメント
 
 - 仕様・挙動・入出力・制約・既定値・順序・命名・生成条件・上書き有無など、仕様に関わる内容は詳細かつ網羅的に記述する（要約だけにしない）。
+- 実装を変更して仕様に影響がある場合は、同一変更セットで仕様書（例: `docs/`）も更新する。仕様書の更新が不要な場合でも、最終返答でその理由を明記する。
 - Markdown ドキュメントの例は、テストケースのファイルで十分に示せる場合はテストケースを参照する。十分でない場合は、その例をテストケース化できるか検討し、可能ならテスト化して参照する。どちらも不適切な場合のみドキュメント内に例を記載する。
+
+# JSON schema validation
+
+- When defining or changing a JSON configuration specification, always create or update a JSON Schema for it.
+- Validate JSON configuration files against the schema as part of the tool's normal execution.
 
 # Languages and writing
 
-## 言語（返答・記述）
+## Response language
 
-### 回答言語
+Write final responses to the user in Japanese unless the user requests otherwise.
 
-ユーザーへの最終返答は日本語で書く（ユーザーから別の希望がある場合はそちらを優先）。
+## Writing language
 
-### 記述言語
-
-- 特に指定がない限り、開発者向けドキュメント（例: `README.md`）、コードコメント、コミットメッセージは英語で書く。
+- Unless specified otherwise, write developer-facing documentation (e.g., `README.md`), code comments, and commit messages in English.
+- Write rule modules in English.
 
 # Markdown Linking Rules
 
@@ -116,6 +166,14 @@
 - 変更したリポジトリ内の手元検証を優先する（例: `npm run build`, `npm test`）。
 - 共通モジュール側の変更が利用側に影響しうる場合は、少なくとも1つの利用側リポジトリで動作確認（ビルド等）を行う。
 
+# Publication standards
+
+- Define a SemVer policy and document what counts as a breaking change.
+- Ensure release notes call out breaking changes and provide a migration path when needed.
+- Populate public package metadata (name, description, repository, issues, homepage, engines) for published artifacts.
+- Validate executable entrypoints and any required shebangs so published commands run after install.
+- Run dependency security checks appropriate to the ecosystem before release and address critical issues.
+
 # 品質（テスト・検証・エラーハンドリング）
 
 ## 方針
@@ -126,6 +184,8 @@
 
 - 変更に関連する最小範囲のビルド/テスト/静的解析を実行する。
 - 実行方法は各リポジトリが用意しているスクリプト/コマンドを優先する（例: `npm run build`, `npm test`）。
+- 静的解析（lint / 型チェック / 静的検証）は必須とし、対象リポジトリに未整備なら同一変更セット内で追加する（必須）。
+- 追加時はまず依存追加なしの最小構成を優先する（例: TypeScript は `tsc --noEmit`）。新規依存が必要な場合は候補と影響範囲を提示し、ユーザー確認後に追加する。
 - 実行できない場合は、その理由と、ユーザーが実行するコマンドを明記する。
 
 ## テスト
@@ -162,6 +222,7 @@
 
 - 失敗を握りつぶさない（空の catch / 黙殺 / サイレントフォールバックを避ける）。
 - 回復可能なら早期 return + 明示的なエラー通知、回復不能なら明確に停止/失敗させる。
+- エラーメッセージは実際の原因を簡潔に示し、必要な場合は対象の入力名と値（例: パス）を含める。
 
 ## 設定検証
 
@@ -173,13 +234,13 @@
 - ログは冗長にしないが、原因特定に必要なコンテキスト（識別子や入力条件）を含める。
 - 秘密情報/個人情報をログに出さない（必要ならマスク/分離する）。
 
-## ドキュメント（README）
+## Documentation (README)
 
-- すべてのリポジトリ（モジュール）に `README.md` を置く。
-- README には最低限として、概要/目的、セットアップ、開発コマンド（例: build/test/lint）、必要な環境変数/設定、公開/デプロイ手順（該当する場合）を書く。
-- ソースコード変更時は、README へ影響がないかを必ず確認する。影響がある場合は同一変更セット内で README を更新する（必須）。
-  - 影響例: 使い方/API/挙動、セットアップ手順、開発コマンド、環境変数、設定、公開/デプロイ手順、対応バージョン、破壊的変更。
-  - README 更新が不要な場合でも、「なぜ不要か」を最終返答に明記する（独断でスキップしない）。
+- Every repository (module) must include a `README.md`.
+- At minimum, the README must cover overview/purpose, setup, development commands (e.g., build/test/lint), required environment variables/config, and release/deploy steps (if applicable).
+- For any source code change, always check whether the README is affected. If it is, update the README at the same time as the code changes (do not defer it to a later step).
+  - Impact examples: usage/API/behavior, setup steps, dev commands, environment variables, configuration, release/deploy steps, supported versions, breaking changes.
+  - Even when a README update is not needed, explain why in the final response (do not skip silently).
 
 # 生成物
 
@@ -192,6 +253,24 @@
 # Naming consistency
 
 - 命名規則（大文字小文字、略語、区切り方）をリポジトリ内で一貫させ、混在があれば整合するようにリネームする。
+
+## Module system (ESM)
+
+- Always set `"type": "module"` in `package.json`.
+- Prefer ESM with `.js` extensions for JavaScript config and scripts (e.g. `next.config.js` as ESM).
+
+## Node packages
+
+### 公開（GitHub / npm）
+
+- スコープ付きパッケージを npm 公開する場合は `publishConfig.access: "public"` を設定する。
+- npm 公開時は `files` を設定し、配布物を意図どおりに限定する。
+- クリーン環境の `npm install` だけで使えない場合は、`prepare` 等で必要なビルドを行う。
+
+### 検証
+
+- 配布物の想定がある場合は `npm pack --dry-run` で内容を確認する。
+- テストがある場合は `npm test` を実行する。
 
 # Project Rules: markdown-to-qti (Kotlin)
 
