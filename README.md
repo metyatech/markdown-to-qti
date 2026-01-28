@@ -36,6 +36,7 @@ Options:
 
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`).
 - `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
+- `--test-title <title>`: Assessment test title (default: `Assessment Test`).
 - `--validate-only`: Parse and validate XML without writing files.
 - `--verbose`: Log processed files.
 

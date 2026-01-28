@@ -55,7 +55,7 @@ fun runCli(
     }
 
     if (!parsed.validateOnly) {
-        writeAssessmentTests(assessmentItemsByOutputDir, output, parsed.verbose)
+        writeAssessmentTests(assessmentItemsByOutputDir, parsed.testTitle, output, parsed.verbose)
     }
 
     return 0
@@ -66,6 +66,7 @@ private data class CliOptions(
     val outputDir: Path?,
     val validateOnly: Boolean,
     val verbose: Boolean,
+    val testTitle: String,
 )
 
 private data class AssessmentItemRef(
@@ -83,6 +84,7 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
     var outputDir: Path? = null
     var validateOnly = false
     var verbose = false
+    var testTitle = "Assessment Test"
 
     var index = 0
     while (index < args.size) {
@@ -108,6 +110,15 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
             "--validate-only" -> {
                 validateOnly = true
                 index += 1
+            }
+            "--test-title" -> {
+                val value = args.getOrNull(index + 1)
+                    ?: run {
+                        error.println("Missing value for --test-title")
+                        return null
+                    }
+                testTitle = value
+                index += 2
             }
             "--verbose" -> {
                 verbose = true
@@ -135,6 +146,7 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
         outputDir = outputDir,
         validateOnly = validateOnly,
         verbose = verbose,
+        testTitle = testTitle,
     )
 }
 
@@ -190,7 +202,7 @@ private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
 }
 
 private fun printUsage(error: PrintStream) {
-    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] [--output-dir <dir>] [--validate-only] [--verbose]")
+    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] [--output-dir <dir>] [--test-title <title>] [--validate-only] [--verbose]")
     error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
 }
 
@@ -210,6 +222,7 @@ private fun registerAssessmentItem(
 
 private fun writeAssessmentTests(
     assessmentItemsByOutputDir: Map<Path, List<AssessmentItemRef>>,
+    testTitle: String,
     output: PrintStream,
     verbose: Boolean,
 ) {
@@ -217,7 +230,7 @@ private fun writeAssessmentTests(
         if (items.isEmpty()) {
             return@forEach
         }
-        val xml = buildAssessmentTest(items)
+        val xml = buildAssessmentTest(items, testTitle)
         val testFile = outputDir.resolve("assessment-test.qti.xml")
         testFile.writeText(xml)
         if (verbose) {
@@ -226,14 +239,14 @@ private fun writeAssessmentTests(
     }
 }
 
-private fun buildAssessmentTest(items: List<AssessmentItemRef>): String {
+private fun buildAssessmentTest(items: List<AssessmentItemRef>, testTitle: String): String {
     val builder = StringBuilder()
     builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
     builder.append(
         "<qti-assessment-test\n" +
             "    xmlns=\"http://www.imsglobal.org/xsd/imsqti_v3p0\"\n" +
             "    identifier=\"assessment-test\"\n" +
-            "    title=\"Assessment Test\">\n",
+            "    title=\"${escapeXml(testTitle)}\">\n",
     )
     builder.append("  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n")
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
