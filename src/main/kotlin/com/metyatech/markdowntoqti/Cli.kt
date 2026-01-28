@@ -85,6 +85,7 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
     var validateOnly = false
     var verbose = false
     var testTitle: String? = null
+    var testTitleFile: Path? = null
 
     var index = 0
     while (index < args.size) {
@@ -120,6 +121,15 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
                 testTitle = value
                 index += 2
             }
+            "--test-title-file" -> {
+                val value = args.getOrNull(index + 1)
+                    ?: run {
+                        error.println("Missing value for --test-title-file")
+                        return null
+                    }
+                testTitleFile = Path.of(value)
+                index += 2
+            }
             "--verbose" -> {
                 verbose = true
                 index += 1
@@ -140,8 +150,24 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
         error.println("At least one --input is required.")
         return null
     }
+    if (!testTitle.isNullOrBlank() && testTitleFile != null) {
+        error.println("Use only one of --test-title or --test-title-file.")
+        return null
+    }
+    if (testTitleFile != null) {
+        if (!Files.exists(testTitleFile)) {
+            error.println("Test title file not found: ${testTitleFile.toAbsolutePath()}")
+            return null
+        }
+        val fileText = testTitleFile.readText().trim()
+        if (fileText.isEmpty()) {
+            error.println("Test title file is empty.")
+            return null
+        }
+        testTitle = fileText
+    }
     if (testTitle.isNullOrBlank()) {
-        error.println("--test-title is required.")
+        error.println("--test-title or --test-title-file is required.")
         return null
     }
 
@@ -207,6 +233,7 @@ private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
 
 private fun printUsage(error: PrintStream) {
     error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]")
+    error.println("   or: markdown-to-qti --input <path> [--input <path> ...] --test-title-file <path> [--output-dir <dir>] [--validate-only] [--verbose]")
     error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
 }
 

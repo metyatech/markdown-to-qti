@@ -32,19 +32,15 @@ Validate inputs without writing output:
 
 - `gradle run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
 
-Non-ASCII test titles (PowerShell example):
+Non-ASCII test titles:
 
-```powershell
-$inputPath = "D:\ghws\javascript-course-exam\exams\2025\2semester\2final_exam\regular"
-$testTitle = "JavaScriptⅡ 期末試験（本試験）"
-$appArgs = "--input `"$inputPath`" --test-title `"$testTitle`""
-Start-Process -FilePath "gradle" -ArgumentList @("run", "--args=$appArgs") -NoNewWindow -Wait
-```
+- Use `--test-title` or `--test-title-file` to avoid shell quoting issues.
 
 Options:
 
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`).
 - `--test-title <title>`: Assessment test title (required).
+- `--test-title-file <path>`: UTF-8 text file containing the assessment test title (required when `--test-title` is not set).
 - `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
 - `--validate-only`: Parse and validate XML without writing files.
 - `--verbose`: Log processed files.
