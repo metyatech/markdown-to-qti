@@ -283,6 +283,38 @@ class CliTest {
         val actualXml = assessmentTest.readText()
         assertEquals(normalizeXml(expectedAssessment), normalizeXml(actualXml))
     }
+
+    @Test
+    fun cli_writesAssessmentTestWithJapaneseTitle() {
+        val tempDir = Files.createTempDirectory("qti-cli-test")
+        val outputDir = Files.createTempDirectory("qti-cli-out")
+        val firstId = "choice-with-scoring"
+        val secondId = "descriptive-with-scoring"
+        val firstInput = tempDir.resolve("$firstId.md")
+        val secondInput = tempDir.resolve("$secondId.md")
+        firstInput.writeText(readFixtureText("$firstId.md"))
+        secondInput.writeText(readFixtureText("$secondId.md"))
+        val expectedAssessment = readFixtureText("assessment-test-two-items-jp-title.qti.xml")
+
+        val exitCode = runCli(
+            arrayOf(
+                "--input",
+                firstInput.toString(),
+                "--input",
+                secondInput.toString(),
+                "--output-dir",
+                outputDir.toString(),
+                "--test-title",
+                "日本語テスト",
+            ),
+        )
+
+        assertEquals(0, exitCode)
+        val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
+        assertTrue(Files.exists(assessmentTest))
+        val actualXml = assessmentTest.readText()
+        assertEquals(normalizeXml(expectedAssessment), normalizeXml(actualXml))
+    }
 }
 
 private fun readFixtureText(name: String): String {

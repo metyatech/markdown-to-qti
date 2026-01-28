@@ -32,6 +32,10 @@ Validate inputs without writing output:
 
 - `gradle run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
 
+Non-ASCII test titles (PowerShell example):
+
+- `gradle run --args='--input path/to/question.md --test-title "日本語テスト"'`
+
 Options:
 
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`).
