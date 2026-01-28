@@ -32,6 +32,8 @@ class CliTest {
             arrayOf(
                 "--input",
                 inputFile.toString(),
+                "--test-title",
+                "Assessment Test",
                 "--output-dir",
                 outputDir.toString(),
             ),
@@ -57,6 +59,8 @@ class CliTest {
             arrayOf(
                 "--input",
                 inputFile.toString(),
+                "--test-title",
+                "Assessment Test",
                 "--output-dir",
                 outputDir.toString(),
                 "--validate-only",
@@ -83,6 +87,8 @@ class CliTest {
             arrayOf(
                 "--input",
                 inputFile.toString(),
+                "--test-title",
+                "Assessment Test",
             ),
         )
 
@@ -127,6 +133,8 @@ class CliTest {
             arrayOf(
                 "--input",
                 inputFile.toString(),
+                "--test-title",
+                "Assessment Test",
                 "--output-dir",
                 outputDir.toString(),
             ),
@@ -159,6 +167,8 @@ class CliTest {
             arrayOf(
                 "--input",
                 inputFile.toString(),
+                "--test-title",
+                "Assessment Test",
                 "--validate-only",
             ),
         )
@@ -189,6 +199,8 @@ class CliTest {
                 firstInput.toString(),
                 "--input",
                 secondInput.toString(),
+                "--test-title",
+                "Assessment Test",
             ),
         )
 
@@ -228,6 +240,8 @@ class CliTest {
                 secondInput.toString(),
                 "--output-dir",
                 outputDir.toString(),
+                "--test-title",
+                "Assessment Test",
             ),
         )
 

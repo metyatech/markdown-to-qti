@@ -84,7 +84,7 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
     var outputDir: Path? = null
     var validateOnly = false
     var verbose = false
-    var testTitle = "Assessment Test"
+    var testTitle: String? = null
 
     var index = 0
     while (index < args.size) {
@@ -138,6 +138,10 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
 
     if (inputPaths.isEmpty()) {
         error.println("At least one --input is required.")
+        return null
+    }
+    if (testTitle.isNullOrBlank()) {
+        error.println("--test-title is required.")
         return null
     }
 
@@ -202,7 +206,7 @@ private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
 }
 
 private fun printUsage(error: PrintStream) {
-    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] [--output-dir <dir>] [--test-title <title>] [--validate-only] [--verbose]")
+    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]")
     error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
 }
 
