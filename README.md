@@ -34,7 +34,12 @@ Validate inputs without writing output:
 
 Non-ASCII test titles (PowerShell example):
 
-- `gradle run --args='--input path/to/question.md --test-title "日本語テスト"'`
+```powershell
+$inputPath = "D:\ghws\javascript-course-exam\exams\2025\2semester\2final_exam\regular"
+$testTitle = "JavaScriptⅡ 期末試験（本試験）"
+$appArgs = "--input `"$inputPath`" --test-title `"$testTitle`""
+Start-Process -FilePath "gradle" -ArgumentList @("run", "--args=$appArgs") -NoNewWindow -Wait
+```
 
 Options:
 
