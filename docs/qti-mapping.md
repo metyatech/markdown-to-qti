@@ -52,7 +52,7 @@ only if at least one item was produced for that directory during the current run
 
 - `qti-assessment-test`:
   - `identifier="assessment-test"` (fixed)
-  - `title`: from `--test-title` or `--test-title-file` (required)
+  - `title`: from `--test-title` (required)
 - `qti-test-part`:
   - `identifier="part-1"` (fixed)
   - `navigation-mode="linear"` (fixed)

@@ -28,19 +28,23 @@ Generate QTI XML from one or more Markdown files:
 
 - `gradle run --args="--input path/to/question.md --test-title \"Example Test\""`
 
+Recommended (avoids Gradle argument parsing issues, especially with non-ASCII titles):
+
+- `gradle installDist`
+- `build/install/markdown-to-qti/bin/markdown-to-qti --input path/to/question.md --test-title "Example Test"`
+
 Validate inputs without writing output:
 
 - `gradle run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
 
 Non-ASCII test titles:
 
-- Use `--test-title` or `--test-title-file` to avoid shell quoting issues.
+- Prefer the installed CLI (`gradle installDist` then `build/install/markdown-to-qti/bin/markdown-to-qti`) to avoid Gradle task parsing issues.
 
 Options:
 
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`).
 - `--test-title <title>`: Assessment test title (required).
-- `--test-title-file <path>`: UTF-8 text file containing the assessment test title (required when `--test-title` is not set).
 - `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
 - `--validate-only`: Parse and validate XML without writing files.
 - `--verbose`: Log processed files.
