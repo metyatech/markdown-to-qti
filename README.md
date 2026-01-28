@@ -26,11 +26,11 @@ If you need to pin Gradle to a specific JDK, copy `gradle.properties.example` to
 
 Generate QTI XML from one or more Markdown files:
 
-- `gradle run --args="--input path/to/question.md"`
+- `gradle run --args="--input path/to/question.md --test-title \"Example Test\""`
 
 Validate inputs without writing output:
 
-- `gradle run --args="--input path/to/question.md --validate-only"`
+- `gradle run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
 
 Options:
 
