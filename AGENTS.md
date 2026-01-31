@@ -3,344 +3,154 @@
 - Before starting any work, run `compose-agentsmd` from the project root.
 - To update shared rules, run `compose-agentsmd edit-rules`, edit the workspace rules, then run `compose-agentsmd apply-rules`.
 - Do not edit `AGENTS.md` directly; update the source rules and regenerate.
-- When updating rules, include a detailed summary of what changed (added/removed/modified items) in the final response.
-
-# AGENTS ルール運用（合成）
-
-## 対象範囲
-
-- この `AGENTS.md` は単独で完結する前提とする。
-- 親子ディレクトリの `AGENTS.md` に依存しない（継承/優先の概念は使わない）。
-- ルールは共通ルールとして一元管理し、各プロジェクトから参照して合成する（例: 共通ルールリポジトリの `rules/` を参照）。
-- プロジェクト固有ルールが必要な場合は、プロジェクト側にローカルルール（例: `agent-rules-local/`）を配置し、ルールセット定義から参照して合成する。
-
-## 更新方針
-
-- ルール変更は共通ルール、プロジェクト固有ルール、ルールセット定義（例: `agent-ruleset.json` や ruleset bundle）に対して行い、合成ツールで `AGENTS.md` を再生成する。
-- 生成済みの `AGENTS.md` は直接編集しない（編集が必要なら元ルールへ反映する）。
-- `AGENTS.md` は生成物だが例外として `.gitignore` に追加せず、再生成してコミットする。
-- ユーザーから「ルールを更新して」と依頼された場合、特段の指示がない限り「適切なルールモジュールとルールセットを更新し、再生成する」ことを意味する。
-- ユーザーが「常にこうして下さい」など恒常運用の指示を明示した場合は、その指示自体をルールとして適切なモジュールに追記する。
-- ユーザーが「必ず」「つねに」などの強い必須指定を含む指示を出した場合は、その指示がグローバルかプロジェクト固有かを判断し、適切なモジュールに追記して再生成する。
-- When updating rules, infer the core intent; if it represents a global policy, record it in global rules rather than project-local rules.
-- When you acknowledge a new persistent instruction, update the appropriate rule module in the same change set and regenerate `AGENTS.md`.
-- When updating rules, include a colorized diff-style summary in the final response; prefer `git diff --color=always` when available. Exclude `AGENTS.md` from the diff output.
-- Always include raw ANSI escape codes in diff outputs (e.g., paste the direct output of `git diff --color=always` without sanitizing or reformatting) so the response renders with colors in compatible UIs.
-
-## ルール修正時の注意点
-
-- MECE（相互排他的かつ全体網羅的）に分類し、重複と漏れを作らない。
-- 冗長な説明や同じ内容の繰り返しを避ける（必要十分）。
-- 手順や指示は、何をすれば良いかが一読で分かる端的な表現で書く。
-- 手順以外の列挙に番号を振らない（追加/削除で保守が崩れるため）。
-- 各セクションの役割を明確にし、「どこに書くべきか」が一目で分かる構成にする。
-
-## AGENTS.md の配置
-
-- 各プロジェクトのルートに `AGENTS.md` を置く。
-- サブツリーに別プロジェクトがある場合のみ、そのルートに `AGENTS.md` を置く（同一プロジェクト内で重複配置しない）。
-
-# Browser automation (Codex)
-
-- For web automation, use the `agent-browser` CLI (via the installed `agent-browser` skill when available).
-- Prefer the ref-based workflow: `agent-browser open <url>` → `agent-browser snapshot -i --json` → interact using `@eN` refs → re-snapshot after changes.
-- If browser launch fails due to missing Playwright binaries, run `npx playwright install chromium` and retry.
-
-# CLI behavior standards
-
-- Provide `--help`/`-h` with clear usage, options, and examples.
-- Provide --version so automation can pin or verify installed versions.
-- Use -V for version and reserve -v for --verbose.
-- When the CLI reads or writes data, support stdin/stdout piping and allow output to be redirected (e.g., `--output` when files are created).
-- Offer a machine-readable output mode (e.g., `--json`) when the CLI emits structured data.
-- For actions that modify or delete data, provide a safe preview (`--dry-run`) and an explicit confirmation bypass (`--yes`/`--force`).
-- Provide controllable logging (`--quiet`, `--verbose`, or `--trace`) so users can diagnose failures without changing code.
-- Use deterministic exit codes (0 success, non-zero failure) and avoid silent fallbacks.
-
-## コマンド実行
-
-- ユーザーが明示しない限り、コマンドにラッパーやパイプを付加しない。
-- ビルド/テスト/実行は、各リポジトリの標準スクリプト/手順（`package.json`、README等）を優先する。
-- When running git commands that could open an editor, avoid interactive prompts by using `--no-edit` where applicable or setting `GIT_EDITOR=true` for that command.
+- When updating rules, include a colorized diff-style summary in the final response. Use `git diff --stat` first, then include the raw ANSI-colored output of `git diff --color=always` (no sanitizing or reformatting), and limit the output to the rule files that changed.
+- Also provide a short, copy-pasteable command the user can run to view the diff in the same format. Use absolute paths so it works regardless of the current working directory, and scope it to the changed rule files.
+- If a diff is provided, a separate detailed summary is not required. If a diff is not possible, include a detailed summary of what changed (added/removed/modified items).
 
-# 配布と公開
-
-- 公開物には最低限 `LICENSE` を含める。
-- 配布物に不要なファイル（例: 生成物、テスト生成物、ローカル設定）を含めない。
-- 利用側がクリーン環境から README に書かれた手順だけで利用できる状態を担保する。
-- 公開内容が変わる場合は、バージョン情報があるなら更新し、変更点を追跡可能にする。
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/agent-rules-composition.md
 
-## GitHub リポジトリの公開情報
+# Rule composition and maintenance
 
-- 外部公開リポジトリでは、GitHub 側の Description / Topics / Homepage を必ず設定する。
-- GitHub 上での運用に必要なファイルをリポジトリ内に用意する。
-- `.github/workflows/ci.yml`
-- `.github/ISSUE_TEMPLATE/bug_report.md`
-- `.github/ISSUE_TEMPLATE/feature_request.md`
-- `.github/pull_request_template.md`
-- `SECURITY.md`
-- `CONTRIBUTING.md`
-- `CODE_OF_CONDUCT.md`
-- CI は、当該リポジトリの標準コマンド（例: `npm run lint`, `npm test`）を実行する構成にする。
+## Scope and composition
 
-## Release 運用
+- AGENTS.md is self-contained; do not rely on parent/child AGENTS for inheritance or precedence.
+- Maintain shared rules centrally and compose per project; use project-local rules only for truly local policies.
+- Place AGENTS.md at the project root; only add another AGENTS.md for nested independent projects.
 
-- 公開リポジトリでは `CHANGELOG.md` を用意し、公開内容の変更を追跡可能にする。
-- 公開（npm 等）を行ったら、対応する Git タグ（例: `v1.2.3`）を作成して push する。
-- GitHub Releases を作成し、本文は `CHANGELOG.md` の該当バージョンを基準に記述する。
-- バージョンは `package.json`（等の管理対象）と Git タグの間で不整合を起こさない。
-- When asked to choose a version number, always decide it yourself (do not ask the user).
-- When bumping a version, always create the GitHub Release and publish the package (e.g., npm) as part of the same update.
-- For npm publishing, ask the user to run `npm publish` instead of executing it directly.
-- Before publishing, run any required prep commands (e.g., `npm install`, `npm test`, `npm pack --dry-run`) and only attempt `npm publish` once the environment is ready. If authentication errors occur, ask the user to complete the publish step.
+## Update policy
 
-## 実装・技術選定
+- Never edit AGENTS.md directly; update source rules and regenerate AGENTS.md.
+- A request to "update rules" means: update the appropriate rule module and ruleset, then regenerate AGENTS.md.
+- If the user gives a persistent instruction (e.g., "always", "must"), encode it in the appropriate module (global vs local).
+- When acknowledging a new persistent instruction, update the rule module in the same change set and regenerate AGENTS.md.
+- When creating a new repository, set up rule files (e.g., agent-ruleset.json and any local rules) so compose-agentsmd can run.
+- When updating rules, infer the core intent; if it is a global policy, record it in global rules rather than project-local rules.
+- If a task requires domain rules not listed in agent-ruleset.json, update the ruleset to include them and regenerate AGENTS.md before proceeding.
 
-- JavaScript ではなく TypeScript を標準とする（`.ts`/`.tsx`）。
-- JavaScript は、ツール都合で必要な設定ファイル等に限定する。
-- 外部依存で汎用的な解決ができる場合は積極的に採用する。内製は外部依存が適切に見つからない場合のみに限定する。
-- 対象ツール/フレームワークに公式チュートリアルや推奨される標準手法がある場合は、それを第一優先で採用する（明確な理由がある場合を除く）。
-- Use established icon libraries instead of creating custom icons or inline SVGs; do not handcraft new icons.
-- Prefer existing internet-hosted tools/libraries for reusable functionality; if none exist, externalize the shared logic into a separate repository/module and reference it via remote dependency (never local filesystem paths).
-- When building a feature that appears reusable across repositories or generally useful, explicitly assess reuse first: look for existing solutions, and if none fit, propose creating a new repository/module and publishing it with proper maintenance hygiene instead of embedding the logic in a single repo.
-- 「既存に合わせる」よりも「理想的な状態（読みやすさ・保守性・一貫性・安全性）」を優先する。
-- ただし、目的と釣り合わない大改修や無関係な改善はしない。
-- 根本原因を修正できる場合は、場当たり的なフォールバックや回避策を追加しない（ノイズ/負債化するため）。
-- When a bug originates in a dependency you control or can patch, fix the dependency first; only add app-level workarounds as a last resort after documenting why the dependency fix is not feasible.
-- 不明点や判断が分かれる点は、独断で進めず確認する。
-- 推測だけで判断して進めない。根拠が不足している場合は確認する。
-- 原因・根拠を未確認のまま「可能性が高い」などの推測で実装・修正しない。まず事実確認し、確認できない場合はユーザーに確認する。
-- Externalize long embedded strings/templates/rules into separate files when possible to keep code readable and maintainable.
+## Editing standards
 
-### 意思決定の優先順位
+- Keep rules MECE, concise, and non-redundant.
+- Use short, action-oriented bullets; avoid numbered lists unless order matters.
+- Prefer the most general applicable rule to avoid duplication.
 
-保守性 ＞ テスト容易性 ＞ 拡張性 ＞ 可読性
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/autonomous-operations.md
 
-## 設計・実装の原則（共通）
+# Autonomous operations
 
-- 責務を小さく保ち、関心を分離する（単一責任）。
-- ツールやモジュールの責務は狭く定義し、用途が曖昧になる広い責務設計を避ける。
-- 互換性維持（後方互換オプションやエイリアスなど）は、ユーザーが明示的に指示した場合のみ行う。
-- 依存関係の方向を意識し、差し替えが必要な箇所は境界を分離する（抽象化/インターフェース等）。
-- 継承より合成を優先し、差分を局所化する（過度な階層化を避ける）。
-- グローバルな共有可変状態を増やさない（所有者と寿命が明確な場所へ閉じ込める）。
-- 深いネストを避け、ガード節/関数分割で見通しを保つ。
-- 意図が分かる命名にする（曖昧な省略や「Utils」的な雑多化を避ける）。
-- ハードコードを避け、設定/定数/データへ寄せられるものは寄せる（変更点を1箇所に集約する）。
-- Always keep everything DRY (implementations, schemas, specs, docs, tests, configs, scripts, and any other artifacts): extract shared structures into reusable definitions/modules and reference them instead of duplicating.
-- 変更により不要になったコード/ヘルパー/分岐/コメント/暫定対応は、指示がなくても削除する（残すか迷う場合は確認する）。
-- 未使用の関数/型/定数/ファイルは残さず削除する（意図的に残す場合は理由を明記する）。
+- Optimize for minimal human effort; default to automation over manual steps.
+- Drive work from the desired outcome: infer acceptance criteria, choose the shortest safe path, and execute end-to-end.
+- Assume end-to-end autonomy for repository operations (issue triage, PRs, merges, releases, repo admin) unless the user restricts scope.
+- When something is unclear, investigate to resolve it; do not proceed with unresolved material uncertainty. If still unclear, ask and include what you checked.
+- Ask only blocking questions; for non-material ambiguities, pick the lowest-risk option, state the assumption, and proceed.
+- Make decisions explicit when they affect scope, risk, cost, or irreversibility.
+- Prefer asynchronous, low-friction control channels (GitHub Issues/PR comments) unless a repository mandates another.
+- Design autonomous workflows for high volume: queue requests, set concurrency limits, and auto-throttle to prevent overload.
 
-## コーディング規約
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/command-execution.md
 
-- まずは各リポジトリの既存コード・設定（formatter/linter）に合わせる。
-- 明示的な規約がない場合は、対象言語/フレームワークの一般的なベストプラクティスに合わせる。
+# Workflow and command execution
 
-## ドキュメント
+- Do not add wrappers or pipes to commands unless the user explicitly asks.
+- Prefer repository-standard scripts/commands (package.json scripts, README instructions).
+- Reproduce reported command issues by running the same command (or closest equivalent) before proposing fixes.
+- Avoid interactive git prompts by using --no-edit or setting GIT_EDITOR=true.
+- If elevated privileges are required, use sudo where available; otherwise run as Administrator.
+- Keep changes scoped to affected repositories; when shared modules change, update consumers and verify at least one.
+- If no branch is specified, work on the current branch; direct commits to main/master are allowed.
+- After addressing PR comments, resolve related conversations; after completing a PR, merge it, sync the target branch, and delete the PR branch locally and remotely.
 
-- 仕様・挙動・入出力・制約・既定値・順序・命名・生成条件・上書き有無など、仕様に関わる内容は詳細かつ網羅的に記述する（要約だけにしない）。
-- 実装を変更して仕様に影響がある場合は、同一変更セットで仕様書（例: `docs/`）も更新する。仕様書の更新が不要な場合でも、最終返答でその理由を明記する。
-- Markdown ドキュメントの例は、テストケースのファイルで十分に示せる場合はテストケースを参照する。十分でない場合は、その例をテストケース化できるか検討し、可能ならテスト化して参照する。どちらも不適切な場合のみドキュメント内に例を記載する。
-- CLIのコマンド例には、必須パラメーターを必ず含める。
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/implementation-and-coding-standards.md
 
-# JSON schema validation
+# Engineering and implementation standards
 
-- When defining or changing a JSON configuration specification, always create or update a JSON Schema for it.
-- Validate JSON configuration files against the schema as part of the tool's normal execution.
+- Prefer official/standard approaches recommended by the framework or tooling.
+- Prefer well-maintained external dependencies; build in-house only when no suitable option exists.
+- If functionality appears reusable, assess reuse first and propose a shared module/repo; prefer remote dependencies (never local filesystem paths).
+- Maintainability > testability > extensibility > readability.
+- Single responsibility; keep modules narrowly scoped and prefer composition over inheritance.
+- Keep dependency direction clean and swappable; avoid global mutable state.
+- Avoid deep nesting; use guard clauses and small functions.
+- Use clear, intention-revealing naming; avoid "Utils" dumping grounds.
+- Prefer configuration/constants over hardcoding; consolidate change points.
+- Keep everything DRY across code, specs, docs, tests, configs, and scripts.
+- Fix root causes; remove obsolete/unused code, branches, comments, and helpers.
+- Externalize large embedded strings/templates/rules when possible.
+- Do not commit build artifacts (follow the repo's .gitignore).
+- Align file/folder names with their contents and keep naming conventions consistent.
 
-# Languages and writing
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/quality-testing-and-errors.md
 
-## Response language
+# Quality, testing, and error handling
 
-Write final responses to the user in Japanese unless the user requests otherwise.
+## Quality priority
 
-## Writing language
+- Quality (correctness, safety, robustness, verifiability) takes priority over speed or convenience.
 
-- Unless specified otherwise, write developer-facing documentation (e.g., `README.md`), code comments, and commit messages in English.
-- Write rule modules in English.
+## Verification
 
-# Markdown Linking Rules
+- Run the smallest relevant set of lint/typecheck/test/build checks using repo-standard commands.
+- Before committing code changes, run lint/test/build; if any are missing, add them in the same change set.
+- Ensure commit-time automation (pre-commit or repo-native) runs lint/test/build for code changes when feasible.
+- If required checks cannot be run, explain why and list the exact commands for the user.
 
-## Link format
-- When a Markdown document references another local file, the link must use a
-  relative path from the Markdown file.
+## Tests (behavior changes)
 
-# Multi-repo workflow
+- Follow test-first: add/update tests and observe failure before implementing fixes.
+- Add/update automated tests for behavior changes and regression coverage.
+- Cover success, failure, boundary, invalid input, and key state transitions; include representative concurrency/retry/recovery when relevant.
+- Keep tests deterministic; minimize time/random/external I/O; inject when needed.
+- For deterministic output files, use full-content snapshot/golden tests.
 
-## マルチリポジトリ運用
+## Exceptions
 
-- リポジトリは基本的に独立しており、変更は「影響のあるリポジトリ」に限定して行う。
-- 共通モジュール/共有ライブラリを更新した場合は、利用側リポジトリでも参照（サブモジュール/依存関係/バージョン）を更新し、必要な検証まで同じ変更セットで行う。
+- If required tests are impractical, document the coverage gap, provide a manual verification plan, and get explicit user approval before skipping.
 
-## ブランチ/PR 運用
+## Error handling and validation
 
-- ブランチの指定がない場合は、現在のブランチで作業してよい。
-- `main`/`master` への直接コミット/プッシュを許可する。
+- Never swallow errors; fail fast or return early with explicit errors.
+- Error messages must reflect actual state and include relevant input context.
+- Validate config and external inputs at boundaries; fail with actionable guidance.
+- Log minimally but with diagnostic context; never log secrets or personal data.
+- Do not prompt without context; for yes/no prompts, Enter means "Yes" and n means "No".
 
-## 変更の局所化
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/user-identity-and-accounts.md
 
-- 変更対象（影響範囲）を明確にし、無関係な別リポジトリへ不用意に波及させない。
-
-## 検証
-
-- 変更したリポジトリ内の手元検証を優先する（例: `npm run build`, `npm test`）。
-- 共通モジュール側の変更が利用側に影響しうる場合は、少なくとも1つの利用側リポジトリで動作確認（ビルド等）を行う。
-
-# Publication standards
-
-- Define a SemVer policy and document what counts as a breaking change.
-- Ensure release notes call out breaking changes and provide a migration path when needed.
-- Populate public package metadata (name, description, repository, issues, homepage, engines) for published artifacts.
-- Validate executable entrypoints and any required shebangs so published commands run after install.
-- Run dependency security checks appropriate to the ecosystem before release and address critical issues.
-- Always run dependency security checks before release and report results in the final response.
-- When creating or updating LICENSE files, set the copyright holder name to "metyatech".
-
-# 品質（テスト・検証・エラーハンドリング）
-
-## 方針
-
-- 品質（正確性・安全性・堅牢性・検証容易性）を最優先とする。納期/速度/簡便さより品質を優先する。
-
-## 検証（ビルド/テスト/静的解析）
-
-- 変更に関連する最小範囲のビルド/テスト/静的解析を実行する。
-- 実行方法は各リポジトリが用意しているスクリプト/コマンドを優先する（例: `npm run build`, `npm test`）。
-- 静的解析（lint / 型チェック / 静的検証）は必須とし、対象リポジトリに未整備なら同一変更セット内で追加する（必須）。
-- 追加時は既存の外部ツール/ライブラリを優先して採用する。新規依存を追加する場合は候補と影響範囲を提示し、ユーザーへ報告したうえで追加する。
-- 実行できない場合は、その理由と、ユーザーが実行するコマンドを明記する。
-
-## テスト
-
-- 進め方: 実装や修正より先にテストを追加し、先に失敗を確認してから本実装を行う（test-first）を必ず守る。
-- Always add end-to-end (E2E) tests for user-visible changes. If an E2E harness is missing, add one in the same change set (prefer existing ecosystem tools) and run it; if it cannot be run, document why and provide a manual verification plan.
-- 常に多様な入力パターンを想定したテストを作成する（必須）。
-- テストは、合理的に想定できる限りの観点を網羅する（成功/失敗/境界値/無効入力/状態遷移/並行実行/再試行/回復など）。不足がある場合は理由と代替検証を明記し、ユーザーの明示許可を得る。
-- 最小のテストだけにせず、期待される挙動の全範囲（成功/失敗、境界値、無効入力、代表的な状態遷移）を網羅する。
-- 原則: 挙動が変わる変更（仕様追加/変更/バグ修正/リファクタ等）には、同一変更セット内で自動テスト（ユニット/統合/スナップショット等）を追加/更新する（必須）。
-- 仕様追加/変更時は、既存仕様の挙動が維持されていることを保証する回帰テストを追加/更新する（必須）。
-- 出力ファイルの仕様を定義している場合、決定的な内容については全文一致のテスト（ゴールデン/スナップショット等）で検証する（必須）。
-- 網羅性: 変更箇所の分岐・状態遷移・入力パターンについて、結果が変わり得るすべてのパターンを自動テストで網羅する（必須）。少なくとも「成功/失敗」「境界値」「無効入力」「代表的な状態遷移（例: 直前状態の影響、切り替え、解除/復帰）」を含める。
-- 失敗系: 期待されるエラー/例外/不正入力の失敗ケースも必ずテストする（必須）。
-- テスト未整備: 対象リポジトリにテストが存在しない場合は、まず実用的に運用できるテスト基盤を同一変更セット内で追加し、変更範囲の全挙動を確認できる十分なテストを追加する。新規依存追加が必要な場合は、候補と影響範囲を提示してユーザーへ報告したうえで進める。
-- 例外: テスト追加や網羅が困難/不適切な場合は、理由と不足しているパターン（カバレッジギャップ）を明記し、代替検証（手動確認手順・実行コマンド等）を提示してユーザーの明示許可を得る（独断で省略しない）。
-- テストは決定的にする（時刻/乱数/外部I/O/グローバル状態への依存を最小化し、必要なら差し替え可能にする）。
-- Playwright のテストが動作しない場合は、`playwright/.cache` を削除してから再実行する（例: `npm run test-ct:clean`）。
-
-## 再発防止
-
-- 仕様追加/変更に起因する不具合が発生した場合は、再発防止のために回帰テストを追加し、必要に応じてルール/プロセスも更新する（必須）。
-- ユーザーが問題点を指摘した場合は、種別（バグ/仕様/運用/手順）に関わらず、再発防止のためにルール/プロセス/テストの更新を行う（必須）。
-
-## バグ修正（手順）
-
-バグ修正は必ず、次の順で行う:
-
-1. バグを再現する自動テストを追加/更新し、テストが失敗することを確認する。
-2. バグ修正を行う。
-3. 関連するテストを実行し、修正によってテストが通ることを確認する。
-
-上記の自動テスト追加が困難な場合は、理由と代替検証手順を明記し、ユーザーに確認してから省略する。
-
-## エラーハンドリング
-
-- 失敗を握りつぶさない（空の catch / 黙殺 / サイレントフォールバックを避ける）。
-- 回復可能なら早期 return + 明示的なエラー通知、回復不能なら明確に停止/失敗させる。
-- エラーメッセージは実際の原因を簡潔に示し、必要な場合は対象の入力名と値（例: パス）を含める。
-
-## 設定検証
-
-- 設定値や外部入力（環境変数/設定ファイル/CLIオプション等）は、起動時または入力境界で検証する。
-- 誤った設定はサイレントに補正せず、「何を直せばよいか」が分かる明示的なエラーで停止する。
-
-## ログ
-
-- ログは冗長にしないが、原因特定に必要なコンテキスト（識別子や入力条件）を含める。
-- 秘密情報/個人情報をログに出さない（必要ならマスク/分離する）。
-
-## Documentation (README)
-
-- Every repository (module) must include a `README.md`.
-- At minimum, the README must cover overview/purpose, setup, development commands (e.g., build/test/lint), required environment variables/config, and release/deploy steps (if applicable).
-- For any source code change, always check whether the README is affected. If it is, update the README at the same time as the code changes (do not defer it to a later step).
-  - Impact examples: usage/API/behavior, setup steps, dev commands, environment variables, configuration, release/deploy steps, supported versions, breaking changes.
-  - Even when a README update is not needed, explain why in the final response (do not skip silently).
-
-# 生成物
-
-- 生成物（例: `build/`, `dist/`, `node_modules/`）は原則コミットしない（各リポジトリの `.gitignore` に従う）。
-
-# Naming alignment
-
-- 機能/内容とファイル名・フォルダ名が一致しない場合は、適切な名称にリネームして整合させる。
-
-# Naming consistency
-
-- 命名規則（大文字小文字、略語、区切り方）をリポジトリ内で一貫させ、混在があれば整合するようにリネームする。
-
-# User Identity and Accounts
+# User identity and accounts
 
 - The user's name is "metyatech".
-- Any external reference that uses the "metyatech" name (e.g., GitHub org/user, npm scope, repositories) is under the user's control.
+- Any external reference using "metyatech" (GitHub org/user, npm scope, repos) is under the user's control.
 - The user has GitHub and npm accounts.
-- Use the `gh` CLI to verify GitHub details when needed.
-- When publishing, cloning, adding submodules, or splitting repositories, prefer the user's "metyatech" ownership unless explicitly instructed otherwise.
+- Use the gh CLI to verify GitHub details when needed.
+- When publishing, cloning, adding submodules, or splitting repos, prefer the user's "metyatech" ownership unless explicitly instructed otherwise.
 
-## Module system (ESM)
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/global/writing-and-documentation.md
 
-- Always set `"type": "module"` in `package.json`.
-- Prefer ESM with `.js` extensions for JavaScript config and scripts (e.g. `next.config.js` as ESM).
+# Writing and documentation
 
-## Node packages
+## User responses
 
-### 公開（GitHub / npm）
+- Respond in Japanese unless the user requests otherwise.
+- After completing a response, emit the Windows SystemSounds.Asterisk sound via PowerShell when possible.
 
-- スコープ付きパッケージを npm 公開する場合は `publishConfig.access: "public"` を設定する。
-- npm 公開時は `files` を設定し、配布物を意図どおりに限定する。
-- クリーン環境の `npm install` だけで使えない場合は、`prepare` 等で必要なビルドを行う。
+## Developer-facing writing
 
-### 検証
+- Write developer documentation, code comments, and commit messages in English.
+- Rule modules are written in English.
 
-- 配布物の想定がある場合は `npm pack --dry-run` で内容を確認する。
-- テストがある場合は `npm test` を実行する。
+## README and docs
 
-# Project Rules: markdown-to-qti (Kotlin)
+- Every repository must include README.md covering overview/purpose, setup, dev commands (build/test/lint), required env/config, and release/deploy steps if applicable.
+- For any code change, assess README impact and update it in the same change set when needed.
+- If a README update is not needed, explain why in the final response.
+- CLI examples in docs must include required parameters.
+- Do not include user-specific local paths or personal data in doc examples.
 
-## Scope
+## Markdown linking
 
-- This repository will implement a tool that converts Markdown content into IMS QTI 3.0.
-- Prioritize correctness of QTI 3.0 output and a clean internal data model.
+- When a Markdown document links to a local file, use a path relative to the Markdown file.
 
-## Kotlin / Gradle conventions
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/domains/exam/exam-markdown-format.md
 
-- Prefer Kotlin (JVM) with Gradle.
-- Keep the entrypoint small; put logic into testable functions/classes.
-- Favor immutable data, explicit types at boundaries, and clear error types.
+# Exam Markdown
 
-## QTI 3.0 output rules
-
-- Output must be valid QTI 3.0 XML (well-formed, schema-aligned).
-- Keep identifiers stable and deterministic (avoid random IDs unless explicitly required).
-- When behavior is ambiguous, prefer standards-compliant conservative output and document the decision.
-
-## Markdown conversion behavior
-
-- Define supported Markdown features explicitly (e.g., headings, lists, code blocks, inline formatting).
-- If a requested Markdown construct cannot be represented in QTI, do not implement it and explicitly state this in the response.
-- Unsupported constructs should fail fast with actionable messages, or be safely downgraded with clear warnings.
-- Preserve exact formatting as much as possible when mapping to QTI.
-
-## Testing expectations
-
-- Add unit tests for parsing/mapping rules.
-- Add golden tests for QTI XML output (compare normalized XML).
-- Include a few end-to-end fixtures (Markdown input -> QTI output) under a dedicated test folder.
-
-## CLI / UX
-
-- Provide a simple CLI with:
-  - input path(s)
-  - output directory
-  - validation mode (validate-only)
-  - verbose logging
-- Error messages must include the source location when possible (file + line/column).
+- When creating or editing exam Markdown, follow the format in markdown-to-qti/markdown-question-spec.md.
