@@ -1,7 +1,12 @@
 {
   "source": "github:metyatech/agent-rules",
   "domains": [
+    "cli",
     "exam"
+  ],
+  "extra": [
+    "../agent-rules-local/ghws-workspace.md",
+    "agent-rules-local/rules/markdown-to-qti.md"
   ],
   "output": "AGENTS.md"
 }

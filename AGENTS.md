@@ -149,8 +149,76 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa
 
 - When a Markdown document links to a local file, use a path relative to the Markdown file.
 
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/domains/cli/cli-standards.md
+
+# CLI standards
+
+- Provide --help/-h with clear usage, options, and examples; include required parameters in examples.
+- Provide --version (use -V); reserve -v for --verbose.
+- Support stdin/stdout piping; allow output redirection (e.g., --output for file creation).
+- Offer machine-readable output (e.g., --json) when emitting structured data.
+- For modifying/deleting actions, provide --dry-run and an explicit bypass (--yes/--force).
+- Provide controllable logging (--quiet, --verbose, or --trace).
+- Use deterministic exit codes (0 success, non-zero failure) and avoid silent fallbacks.
+- For JSON configuration, define/update a JSON Schema and validate config on load.
+
 Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/74947807374f378cfa6135682415a4da4ed7dbe6/rules/domains/exam/exam-markdown-format.md
 
 # Exam Markdown
 
 - When creating or editing exam Markdown, follow the format in markdown-to-qti/markdown-question-spec.md.
+
+Source: D:/ghws/agent-rules-local/ghws-workspace.md
+
+# GHWS workspace repository management
+
+- These rules apply only when working inside the `ghws` workspace repository (the exact path may vary).
+- All folders in this workspace (except `agent-rules-local`) are Git repositories connected to GitHub.
+- Some repositories are not owned by the user, but the user can commit and push to them.
+- If the target repository already exists under the current `ghws` workspace, edit it in place.
+- If the target repository is not present under the current `ghws` workspace, clone it from GitHub with `--recursive` and then work in the cloned folder.
+- When adding a new repository, create it under the `ghws` workspace first and then push it to GitHub.
+- Never clone repositories that are not managed by the user into the `ghws` workspace.
+
+Source: D:/ghws/markdown-to-qti/agent-rules-local/rules/markdown-to-qti.md
+
+# Project Rules: markdown-to-qti (Kotlin)
+
+## Scope
+
+- This repository will implement a tool that converts Markdown content into IMS QTI 3.0.
+- Prioritize correctness of QTI 3.0 output and a clean internal data model.
+
+## Kotlin / Gradle conventions
+
+- Prefer Kotlin (JVM) with Gradle.
+- Keep the entrypoint small; put logic into testable functions/classes.
+- Favor immutable data, explicit types at boundaries, and clear error types.
+
+## QTI 3.0 output rules
+
+- Output must be valid QTI 3.0 XML (well-formed, schema-aligned).
+- Keep identifiers stable and deterministic (avoid random IDs unless explicitly required).
+- When behavior is ambiguous, prefer standards-compliant conservative output and document the decision.
+
+## Markdown conversion behavior
+
+- Define supported Markdown features explicitly (e.g., headings, lists, code blocks, inline formatting).
+- If a requested Markdown construct cannot be represented in QTI, do not implement it and explicitly state this in the response.
+- Unsupported constructs should fail fast with actionable messages, or be safely downgraded with clear warnings.
+- Preserve exact formatting as much as possible when mapping to QTI.
+
+## Testing expectations
+
+- Add unit tests for parsing/mapping rules.
+- Add golden tests for QTI XML output (compare normalized XML).
+- Include a few end-to-end fixtures (Markdown input -> QTI output) under a dedicated test folder.
+
+## CLI / UX
+
+- Provide a simple CLI with:
+  - input path(s)
+  - output directory
+  - validation mode (validate-only)
+  - verbose logging
+- Error messages must include the source location when possible (file + line/column).
