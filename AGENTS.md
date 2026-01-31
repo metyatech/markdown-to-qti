@@ -7,7 +7,7 @@
 - Also provide a short, copy-pasteable command the user can run to view the diff in the same format. Use absolute paths so it works regardless of the current working directory, and scope it to the changed rule files.
 - If a diff is provided, a separate detailed summary is not required. If a diff is not possible, include a detailed summary of what changed (added/removed/modified items).
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/agent-rules-composition.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/agent-rules-composition.md
 
 # Rule composition and maintenance
 
@@ -34,7 +34,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - Use short, action-oriented bullets; avoid numbered lists unless order matters.
 - Prefer the most general applicable rule to avoid duplication.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/autonomous-operations.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/autonomous-operations.md
 
 # Autonomous operations
 
@@ -48,7 +48,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - Prefer asynchronous, low-friction control channels (GitHub Issues/PR comments) unless a repository mandates another.
 - Design autonomous workflows for high volume: queue requests, set concurrency limits, and auto-throttle to prevent overload.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/command-execution.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/command-execution.md
 
 # Workflow and command execution
 
@@ -61,7 +61,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - If no branch is specified, work on the current branch; direct commits to main/master are allowed.
 - After addressing PR comments, resolve related conversations; after completing a PR, merge it, sync the target branch, and delete the PR branch locally and remotely.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/implementation-and-coding-standards.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/implementation-and-coding-standards.md
 
 # Engineering and implementation standards
 
@@ -80,7 +80,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - Do not commit build artifacts (follow the repo's .gitignore).
 - Align file/folder names with their contents and keep naming conventions consistent.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/quality-testing-and-errors.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/quality-testing-and-errors.md
 
 # Quality, testing, and error handling
 
@@ -114,7 +114,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - Validate config and external inputs at boundaries; fail with actionable guidance.
 - Log minimally but with diagnostic context; never log secrets or personal data.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/user-identity-and-accounts.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/user-identity-and-accounts.md
 
 # User identity and accounts
 
@@ -124,7 +124,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - Use the gh CLI to verify GitHub details when needed.
 - When publishing, cloning, adding submodules, or splitting repos, prefer the user's "metyatech" ownership unless explicitly instructed otherwise.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/global/writing-and-documentation.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/global/writing-and-documentation.md
 
 # Writing and documentation
 
@@ -150,7 +150,7 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 
 - When a Markdown document links to a local file, use a path relative to the Markdown file.
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/domains/cli/cli-standards.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/domains/cli/cli-standards.md
 
 # CLI standards
 
@@ -164,13 +164,13 @@ Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13
 - For JSON configuration, define/update a JSON Schema and validate config on load.
 - For interactive CLI prompts, provide required context before asking; for yes/no prompts, Enter means "Yes" and "n" means "No".
 
-Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/0323d79ecb8a6f5d13e9cc79f587c384f1e67063/rules/domains/exam/exam-markdown-format.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/domains/exam/exam-markdown-format.md
 
 # Exam Markdown
 
 - When creating or editing exam Markdown, follow the format in markdown-to-qti/markdown-question-spec.md.
 
-Source: D:/ghws/agent-rules-local/ghws-workspace.md
+Source: C:/Users/Origin/.agentsmd/cache/metyatech/agent-rules/6efe7505e4d71574030616b6b7d942440fdf3a2e/rules/domains/ghws/ghws-workspace.md
 
 # GHWS workspace repository management
 
