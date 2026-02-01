@@ -8,6 +8,11 @@ plugins {
     application
 }
 
+val currentJava = Runtime.version().feature()
+if (currentJava > 23) {
+    throw GradleException("Java $currentJava is not supported. Use tools/gradle-java23.ps1 or set JAVA_HOME_23.")
+}
+
 kotlin {
     jvmToolchain(23)
 }

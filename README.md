@@ -10,17 +10,16 @@ IMS QTI 3.0. The authoring format is defined in:
 
 ## Setup
 
-- Install JDK 23 for Gradle/Kotlin builds.
 - Install Gradle (CLI).
+- Java 23 is required for Gradle/Kotlin builds. Use `tools/gradle-java23.ps1` (it auto-downloads JDK 23 if missing), or set `JAVA_HOME_23` to an existing JDK 23 installation.
 
 ## Toolchain
 
-If you need to pin Gradle to a specific JDK, copy `gradle.properties.example` to
-`gradle.properties` and update `org.gradle.java.home` for your environment.
+If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 installation directory.
 
 ## Development Commands
 
-- Run tests: `gradle test`
+- Run tests: `.\tools\gradle-java23.ps1 test`
 
 ## CLI Usage
 
@@ -30,16 +29,16 @@ Generate QTI XML from one or more Markdown files:
 
 Recommended (avoids Gradle argument parsing issues, especially with non-ASCII titles):
 
-- `gradle installDist`
+- `.\tools\gradle-java23.ps1 installDist`
 - `build/install/markdown-to-qti/bin/markdown-to-qti --input path/to/question.md --test-title "Example Test"`
 
 Validate inputs without writing output:
 
-- `gradle run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
+- `.\tools\gradle-java23.ps1 run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
 
 Non-ASCII test titles:
 
-- Prefer the installed CLI (`gradle installDist` then `build/install/markdown-to-qti/bin/markdown-to-qti`) to avoid Gradle task parsing issues.
+- Prefer the installed CLI (`.\tools\gradle-java23.ps1 installDist` then `build/install/markdown-to-qti/bin/markdown-to-qti`) to avoid Gradle task parsing issues.
 
 Options:
 
