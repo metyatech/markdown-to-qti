@@ -73,3 +73,9 @@ None yet.
 ## Release / Deployment
 
 Not applicable yet.
+
+## Development Commands
+- Build: `gradle build`
+- Test: `gradle test`
+- Lint: `gradle check (if configured)`
+
