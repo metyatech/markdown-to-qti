@@ -58,8 +58,8 @@ function Get-Java23Home {
         Remove-Item -Path $extractDir -Recurse -Force
     }
 
-    Write-Output ("Downloading JDK 23 from {0}" -f $url)
-    Invoke-WebRequest -Uri $url -OutFile $zipPath
+    Write-Host ("Downloading JDK 23 from {0}" -f $url)
+    Invoke-WebRequest -Uri $url -OutFile $zipPath | Out-Null
     Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
     Remove-Item -Path $zipPath -Force
 
@@ -71,7 +71,7 @@ function Get-Java23Home {
     if (Test-Path -LiteralPath $localHome) {
         Remove-Item -Path $localHome -Recurse -Force
     }
-    Move-Item -Path $extracted.FullName -Destination $localHome
+    Move-Item -Path $extracted.FullName -Destination $localHome | Out-Null
     Remove-Item -Path $extractDir -Recurse -Force
 
     $finalJava = Join-Path -Path $localHome -ChildPath "bin\\java.exe"
