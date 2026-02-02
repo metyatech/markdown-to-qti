@@ -87,7 +87,12 @@ $sep = [System.IO.Path]::PathSeparator
 $env:JAVA_HOME = $javaHome
 $env:PATH = "$javaBin$sep$($env:PATH)"
 
-& gradle @GradleArgs
+$resolvedArgs = @($GradleArgs)
+if (-not ($resolvedArgs -contains "--no-daemon")) {
+    $resolvedArgs += "--no-daemon"
+}
+
+& gradle @resolvedArgs
 if ($LASTEXITCODE -ne 0) {
-    throw "Gradle failed with exit code ${LASTEXITCODE}: gradle $($GradleArgs -join ' ')"
+    throw "Gradle failed with exit code ${LASTEXITCODE}: gradle $($resolvedArgs -join ' ')"
 }
