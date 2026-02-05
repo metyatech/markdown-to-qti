@@ -47,6 +47,7 @@ internal data class SectionContent(
     val startLine: Int,
 ) {
     fun text(): String = lines.joinToString("\n")
+
     fun isBlank(): Boolean = lines.all { it.isBlank() }
 }
 
@@ -55,18 +56,29 @@ private data class MarkdownParseResult(
     val imageSources: List<String>,
 )
 
-fun convertMarkdownToQti(markdown: String, fixtureId: String): String {
+fun convertMarkdownToQti(
+    markdown: String,
+    fixtureId: String,
+): String {
     val parsed = parseMarkdownQuestion(markdown, fixtureId, null)
     return QtiBuilder(parsed.question).build()
 }
 
-fun convertMarkdownToQtiWithAssets(markdown: String, fixtureId: String, sourcePath: Path): QtiConversionResult {
+fun convertMarkdownToQtiWithAssets(
+    markdown: String,
+    fixtureId: String,
+    sourcePath: Path,
+): QtiConversionResult {
     val parsed = parseMarkdownQuestion(markdown, fixtureId, sourcePath)
     val localImages = resolveLocalImages(parsed.imageSources, sourcePath)
     return QtiConversionResult(QtiBuilder(parsed.question).build(), localImages)
 }
 
-private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePath: Path?): MarkdownParseResult {
+private fun parseMarkdownQuestion(
+    markdown: String,
+    identifier: String,
+    sourcePath: Path?,
+): MarkdownParseResult {
     val normalized = markdown.replace("\r\n", "\n")
     val lines = normalized.split("\n")
     var index = 0
@@ -83,15 +95,11 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         return null
     }
 
-    val titleLine = nextNonEmptyLine()
-        ?: throw IllegalArgumentException("Missing title heading")
-    if (!titleLine.first.startsWith("# ")) {
-        throw IllegalArgumentException("Title must start with '# '")
-    }
+    val titleLine =
+        requireNotNull(nextNonEmptyLine()) { "Missing title heading" }
+    require(titleLine.first.startsWith("# ")) { "Title must start with '# '" }
     val title = titleLine.first.removePrefix("# ").trim()
-    if (title.isBlank()) {
-        throw IllegalArgumentException("Title must not be empty")
-    }
+    require(title.isNotEmpty()) { "Title must not be empty" }
 
     val sections = mutableMapOf<String, SectionContent>()
     while (index < lines.size) {
@@ -100,9 +108,7 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
             index += 1
             continue
         }
-        if (!line.startsWith("## ")) {
-            throw IllegalArgumentException("Unexpected content outside section: $line")
-        }
+        require(line.startsWith("## ")) { "Unexpected content outside section: $line" }
         val heading = line.removePrefix("## ").trim()
         index += 1
 
@@ -115,81 +121,80 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         sections[heading] = SectionContent(heading, content, startLine)
     }
 
-    val typeSection = sections["Type"]
-        ?: throw IllegalArgumentException("Missing ## Type section")
-    val typeValue = typeSection.lines.firstOrNull { it.isNotBlank() }
-        ?.trim()
-        ?: throw IllegalArgumentException("Type value missing")
-    val type = when (typeValue) {
-        "descriptive" -> QuestionType.DESCRIPTIVE
-        "choice" -> QuestionType.CHOICE
-        "cloze" -> QuestionType.CLOZE
-        else -> throw IllegalArgumentException("Unknown question type: $typeValue")
-    }
+    val typeSection =
+        requireNotNull(sections["Type"]) { "Missing ## Type section" }
+    val typeValue =
+        requireNotNull(
+            typeSection.lines
+                .firstOrNull { it.isNotBlank() }
+                ?.trim(),
+        ) { "Type value missing" }
+    val type =
+        when (typeValue) {
+            "descriptive" -> QuestionType.DESCRIPTIVE
+            "choice" -> QuestionType.CHOICE
+            "cloze" -> QuestionType.CLOZE
+            else -> throw IllegalArgumentException("Unknown question type: $typeValue")
+        }
 
     val renderer = MarkdownQtiRenderer()
 
-    val promptSection = sections["Prompt"]
-        ?: throw IllegalArgumentException("Missing ## Prompt section")
-    if (promptSection.isBlank()) {
-        throw IllegalArgumentException("Prompt section must not be empty")
-    }
+    val promptSection =
+        requireNotNull(sections["Prompt"]) { "Missing ## Prompt section" }
+    require(promptSection.text().isNotBlank()) { "Prompt section must not be empty" }
     val promptContext = RenderContext("Prompt", sourcePath, promptSection.startLine)
-    val promptRender = renderer.renderBlocks(
-        markdown = promptSection.text(),
-        context = promptContext,
-        clozeHandling = if (type == QuestionType.CLOZE) ClozeHandling.ENABLED else ClozeHandling.DISABLED,
-    )
-    if (type == QuestionType.CLOZE && promptRender.clozeAnswers.isEmpty()) {
-        throw IllegalArgumentException("Cloze prompt must include at least one blank")
+    val promptRender =
+        renderer.renderBlocks(
+            markdown = promptSection.text(),
+            context = promptContext,
+            clozeHandling = if (type == QuestionType.CLOZE) ClozeHandling.ENABLED else ClozeHandling.DISABLED,
+        )
+    if (type == QuestionType.CLOZE) {
+        require(promptRender.clozeAnswers.isNotEmpty()) { "Cloze prompt must include at least one blank" }
     }
 
-    val explanationRender = sections["Explanation"]?.let { section ->
-        if (section.isBlank()) {
-            throw IllegalArgumentException("Explanation section must not be empty")
+    val explanationRender =
+        sections["Explanation"]?.let { section ->
+            require(section.text().isNotBlank()) { "Explanation section must not be empty" }
+            val context = RenderContext("Explanation", sourcePath, section.startLine)
+            renderer.renderBlocks(section.text(), context, ClozeHandling.DISABLED)
         }
-        val context = RenderContext("Explanation", sourcePath, section.startLine)
-        renderer.renderBlocks(section.text(), context, ClozeHandling.DISABLED)
-    }
 
-    val scoring = sections["Scoring"]?.let { section ->
-        parseScoringSection(section, renderer, sourcePath)
-    } ?: emptyList()
+    val scoring =
+        sections["Scoring"]?.let { section ->
+            parseScoringSection(section, renderer, sourcePath)
+        } ?: emptyList()
 
-    val options = if (type == QuestionType.CHOICE) {
-        val optionsSection = sections["Options"]
-            ?: throw IllegalArgumentException("Missing ## Options section")
-        if (optionsSection.isBlank()) {
-            throw IllegalArgumentException("Options must not be empty")
+    val options =
+        if (type == QuestionType.CHOICE) {
+            val optionsSection =
+                requireNotNull(sections["Options"]) { "Missing ## Options section" }
+            require(optionsSection.text().isNotBlank()) { "Options must not be empty" }
+            val context = RenderContext("Options", sourcePath, optionsSection.startLine)
+            val renderedOptions = renderer.renderChoiceOptions(optionsSection.text(), context)
+            require(renderedOptions.isNotEmpty()) { "Options must not be empty" }
+            val correctCount = renderedOptions.count { it.isCorrect }
+            require(correctCount == 1) { "Choice question must have exactly one correct option" }
+            renderedOptions
+        } else {
+            emptyList()
         }
-        val context = RenderContext("Options", sourcePath, optionsSection.startLine)
-        val renderedOptions = renderer.renderChoiceOptions(optionsSection.text(), context)
-        if (renderedOptions.isEmpty()) {
-            throw IllegalArgumentException("Options must not be empty")
-        }
-        val correctCount = renderedOptions.count { it.isCorrect }
-        if (correctCount != 1) {
-            throw IllegalArgumentException("Choice question must have exactly one correct option")
-        }
-        renderedOptions
-    } else {
-        emptyList()
-    }
 
     val imageSources = mutableSetOf<String>()
     imageSources.addAll(promptRender.localImages)
     explanationRender?.let { imageSources.addAll(it.localImages) }
     options.forEach { option -> imageSources.addAll(option.localImages) }
 
-    val question = MarkdownQuestion(
-        identifier = identifier,
-        title = title,
-        type = type,
-        prompt = promptRender,
-        explanation = explanationRender,
-        options = options,
-        scoring = scoring,
-    )
+    val question =
+        MarkdownQuestion(
+            identifier = identifier,
+            title = title,
+            type = type,
+            prompt = promptRender,
+            explanation = explanationRender,
+            options = options,
+            scoring = scoring,
+        )
 
     return MarkdownParseResult(question, imageSources.toList())
 }
@@ -207,18 +212,19 @@ internal fun parseScoringSection(
         if (line.isEmpty()) {
             return@forEachIndexed
         }
-        val content = if (line.startsWith("- ")) {
-            line.removePrefix("- ").trim()
-        } else {
-            line
-        }
-        val match = pattern.matchEntire(content)
-            ?: throw IllegalArgumentException("Invalid scoring points in line: $rawLine")
+        val content =
+            if (line.startsWith("- ")) {
+                line.removePrefix("- ").trim()
+            } else {
+                line
+            }
+        val match =
+            requireNotNull(pattern.matchEntire(content)) {
+                "Invalid scoring points in line: $rawLine"
+            }
         val points = match.groupValues[1]
         val criterion = match.groupValues[2].trim()
-        if (criterion.isBlank()) {
-            throw IllegalArgumentException("Scoring criterion must not be empty: $rawLine")
-        }
+        require(criterion.isNotBlank()) { "Scoring criterion must not be empty: $rawLine" }
         val context = RenderContext("Scoring", sourcePath, section.startLine + index)
         val rendered = renderer.renderInline(criterion, context, ClozeHandling.DISABLED)
         criteria.add(ScoringCriterion(BigDecimal(points), rendered.xml))
@@ -227,19 +233,22 @@ internal fun parseScoringSection(
     return criteria
 }
 
-private fun resolveLocalImages(imageSources: List<String>, sourcePath: Path): List<LocalImage> {
+private fun resolveLocalImages(
+    imageSources: List<String>,
+    sourcePath: Path,
+): List<LocalImage> {
     val sourceDir = sourcePath.parent
     return imageSources.mapNotNull { source ->
         if (isRemoteImagePath(source)) {
             return@mapNotNull null
         }
         val sourcePathValue = Path.of(source)
-        if (sourcePathValue.isAbsolute) {
-            throw IllegalArgumentException("Image path must be relative in ${sourcePath.toAbsolutePath()}: $source")
+        require(!sourcePathValue.isAbsolute) {
+            "Image path must be relative in ${sourcePath.toAbsolutePath()}: $source"
         }
         val resolvedSource = sourceDir.resolve(sourcePathValue).normalize()
-        if (!Files.exists(resolvedSource) || !Files.isRegularFile(resolvedSource)) {
-            throw IllegalArgumentException("Image file not found in ${sourcePath.toAbsolutePath()}: $source")
+        require(Files.exists(resolvedSource) && Files.isRegularFile(resolvedSource)) {
+            "Image file not found in ${sourcePath.toAbsolutePath()}: $source"
         }
         LocalImage(resolvedSource, sourcePathValue.normalize())
     }
@@ -252,7 +261,9 @@ internal fun isRemoteImagePath(source: String): Boolean {
         normalized.startsWith("data:")
 }
 
-private class QtiBuilder(private val question: MarkdownQuestion) {
+private class QtiBuilder(
+    private val question: MarkdownQuestion,
+) {
     fun build(): String {
         val builder = StringBuilder()
         builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
@@ -280,12 +291,14 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         when (question.type) {
             QuestionType.DESCRIPTIVE -> {
                 builder.append(
-                    "  <qti-response-declaration identifier=\"RESPONSE\" cardinality=\"single\" base-type=\"string\"/>\n",
+                    "  <qti-response-declaration identifier=\"RESPONSE\" " +
+                        "cardinality=\"single\" base-type=\"string\"/>\n",
                 )
             }
             QuestionType.CHOICE -> {
                 builder.append(
-                    "  <qti-response-declaration identifier=\"RESPONSE\" cardinality=\"single\" base-type=\"identifier\">\n",
+                    "  <qti-response-declaration identifier=\"RESPONSE\" " +
+                        "cardinality=\"single\" base-type=\"identifier\">\n",
                 )
                 val correctIndex = question.options.indexOfFirst { it.isCorrect }
                 val correctId = "CHOICE_${correctIndex + 1}"
@@ -298,7 +311,8 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                 val blanks = question.prompt.clozeAnswers
                 if (blanks.size == 1) {
                     builder.append(
-                        "  <qti-response-declaration identifier=\"RESPONSE\" cardinality=\"single\" base-type=\"string\">\n",
+                        "  <qti-response-declaration identifier=\"RESPONSE\" " +
+                            "cardinality=\"single\" base-type=\"string\">\n",
                     )
                     builder.append("    <qti-correct-response>\n")
                     builder.append("      <qti-value>${escapeXml(blanks.first())}</qti-value>\n")
@@ -308,7 +322,8 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
                     blanks.forEachIndexed { index, blank ->
                         val identifier = "RESPONSE_${index + 1}"
                         builder.append(
-                            "  <qti-response-declaration identifier=\"$identifier\" cardinality=\"single\" base-type=\"string\">\n",
+                            "  <qti-response-declaration identifier=\"$identifier\" " +
+                                "cardinality=\"single\" base-type=\"string\">\n",
                         )
                         builder.append("    <qti-correct-response>\n")
                         builder.append("      <qti-value>${escapeXml(blank)}</qti-value>\n")
@@ -324,7 +339,10 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         if (!hasExplanation()) {
             return
         }
-        builder.append("  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n")
+        builder.append(
+            "  <qti-outcome-declaration identifier=\"FEEDBACK\" " +
+                "cardinality=\"single\" base-type=\"identifier\"/>\n",
+        )
     }
 
     private fun appendItemBody(builder: StringBuilder) {
@@ -383,14 +401,20 @@ private class QtiBuilder(private val question: MarkdownQuestion) {
         if (explanation == null || explanation.xml.isBlank()) {
             return
         }
-        builder.append("  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" identifier=\"EXPLANATION\" show-hide=\"show\">\n")
+        builder.append(
+            "  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" " +
+                "identifier=\"EXPLANATION\" show-hide=\"show\">\n",
+        )
         builder.append("    <qti-content-body>\n")
         appendXml(builder, explanation.xml)
         builder.append("    </qti-content-body>\n")
         builder.append("  </qti-modal-feedback>\n")
     }
 
-    private fun appendXml(builder: StringBuilder, xml: String) {
+    private fun appendXml(
+        builder: StringBuilder,
+        xml: String,
+    ) {
         if (xml.isBlank()) {
             return
         }

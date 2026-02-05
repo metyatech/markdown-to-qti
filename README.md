@@ -10,8 +10,8 @@ IMS QTI 3.0. The authoring format is defined in:
 
 ## Setup
 
-- Install Gradle (CLI).
-- Java 23 is required for Gradle/Kotlin builds. Use `tools/gradle-java23.ps1` (it auto-downloads JDK 23 if missing), or set `JAVA_HOME_23` to an existing JDK 23 installation.
+- Install Java 23. Use `tools/gradle-java23.ps1` (it auto-downloads JDK 23 if missing), or set `JAVA_HOME_23` to an existing JDK 23 installation.
+- This project uses the Gradle wrapper. You can use `./gradlew` (or `gradlew.bat` on Windows) to run Gradle tasks.
 
 ## Toolchain
 
@@ -19,7 +19,10 @@ If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 in
 
 ## Development Commands
 
-- Run tests: `.\tools\gradle-java23.ps1 test`
+- Build: `.\tools\gradle-java23.ps1 build`
+- Test: `.\tools\gradle-java23.ps1 test`
+- Lint: `.\tools\gradle-java23.ps1 detekt`
+- Format: `.\tools\gradle-java23.ps1 spotlessApply`
 
 ## CLI Usage
 
@@ -74,8 +77,4 @@ None yet.
 
 Not applicable yet.
 
-## Development Commands
-- Build: `gradle build`
-- Test: `gradle test`
-- Lint: `gradle check (if configured)`
 

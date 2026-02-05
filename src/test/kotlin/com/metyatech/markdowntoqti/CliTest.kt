@@ -1,5 +1,10 @@
 package com.metyatech.markdowntoqti
 
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.xml.sax.InputSource
 import java.io.StringReader
 import java.io.StringWriter
 import java.nio.file.Files
@@ -8,14 +13,9 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
+import kotlin.io.path.createDirectories
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
-import kotlin.io.path.createDirectories
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
-import org.xml.sax.InputSource
 
 class CliTest {
     @Test
@@ -28,16 +28,17 @@ class CliTest {
         val inputFile = tempDir.resolve("$fixtureId.md")
         inputFile.writeText(markdown)
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                inputFile.toString(),
-                "--test-title",
-                "Assessment Test",
-                "--output-dir",
-                outputDir.toString(),
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    inputFile.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                    "--output-dir",
+                    outputDir.toString(),
+                ),
+            )
 
         assertEquals(0, exitCode)
         val outputFile = outputDir.resolve("$fixtureId.qti.xml")
@@ -55,17 +56,18 @@ class CliTest {
         val inputFile = tempDir.resolve("$fixtureId.md")
         inputFile.writeText(markdown)
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                inputFile.toString(),
-                "--test-title",
-                "Assessment Test",
-                "--output-dir",
-                outputDir.toString(),
-                "--validate-only",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    inputFile.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                    "--output-dir",
+                    outputDir.toString(),
+                    "--validate-only",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val outputFile = outputDir.resolve("$fixtureId.qti.xml")
@@ -83,14 +85,15 @@ class CliTest {
         val inputFile = tempDir.resolve("$fixtureId.md")
         inputFile.writeText(markdown)
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                inputFile.toString(),
-                "--test-title",
-                "Assessment Test",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    inputFile.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val outputDir = tempDir.resolve("qti-out")
@@ -115,7 +118,8 @@ class CliTest {
         val imageFile = imagesDir.resolve("diagram.png")
         imageFile.writeText("fake image")
 
-        val markdown = """
+        val markdown =
+            """
             # Image Prompt
 
             ## Type
@@ -125,20 +129,21 @@ class CliTest {
             Identify the highlighted part.
 
             ![Alt text](images/diagram.png "Diagram")
-        """.trimIndent()
+            """.trimIndent()
         val inputFile = tempDir.resolve("image-prompt.md")
         inputFile.writeText(markdown)
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                inputFile.toString(),
-                "--test-title",
-                "Assessment Test",
-                "--output-dir",
-                outputDir.toString(),
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    inputFile.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                    "--output-dir",
+                    outputDir.toString(),
+                ),
+            )
 
         assertEquals(0, exitCode)
         val outputFile = outputDir.resolve("image-prompt.qti.xml")
@@ -163,15 +168,16 @@ class CliTest {
         val inputFile = tempDir.resolve("$fixtureId.md")
         inputFile.writeText(markdown)
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                inputFile.toString(),
-                "--test-title",
-                "Assessment Test",
-                "--validate-only",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    inputFile.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                    "--validate-only",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val outputDir = tempDir.resolve("qti-out")
@@ -193,16 +199,17 @@ class CliTest {
         firstInput.writeText(readFixtureText("$firstId.md"))
         secondInput.writeText(readFixtureText("$secondId.md"))
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                firstInput.toString(),
-                "--input",
-                secondInput.toString(),
-                "--test-title",
-                "Assessment Test",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    firstInput.toString(),
+                    "--input",
+                    secondInput.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val firstDirOut = firstDir.resolve("qti-out")
@@ -232,18 +239,19 @@ class CliTest {
         secondInput.writeText(readFixtureText("$secondId.md"))
         val expectedAssessment = readFixtureText("assessment-test-two-items.qti.xml")
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                firstInput.toString(),
-                "--input",
-                secondInput.toString(),
-                "--output-dir",
-                outputDir.toString(),
-                "--test-title",
-                "Assessment Test",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    firstInput.toString(),
+                    "--input",
+                    secondInput.toString(),
+                    "--output-dir",
+                    outputDir.toString(),
+                    "--test-title",
+                    "Assessment Test",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
@@ -264,18 +272,19 @@ class CliTest {
         secondInput.writeText(readFixtureText("$secondId.md"))
         val expectedAssessment = readFixtureText("assessment-test-two-items-custom-title.qti.xml")
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                firstInput.toString(),
-                "--input",
-                secondInput.toString(),
-                "--output-dir",
-                outputDir.toString(),
-                "--test-title",
-                "Custom Exam",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    firstInput.toString(),
+                    "--input",
+                    secondInput.toString(),
+                    "--output-dir",
+                    outputDir.toString(),
+                    "--test-title",
+                    "Custom Exam",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
@@ -296,18 +305,19 @@ class CliTest {
         secondInput.writeText(readFixtureText("$secondId.md"))
         val expectedAssessment = readFixtureText("assessment-test-two-items-jp-title.qti.xml")
 
-        val exitCode = runCli(
-            arrayOf(
-                "--input",
-                firstInput.toString(),
-                "--input",
-                secondInput.toString(),
-                "--output-dir",
-                outputDir.toString(),
-                "--test-title",
-                "日本語テスト",
-            ),
-        )
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--input",
+                    firstInput.toString(),
+                    "--input",
+                    secondInput.toString(),
+                    "--output-dir",
+                    outputDir.toString(),
+                    "--test-title",
+                    "日本語テスト",
+                ),
+            )
 
         assertEquals(0, exitCode)
         val assessmentTest = outputDir.resolve("assessment-test.qti.xml")
@@ -319,27 +329,31 @@ class CliTest {
 
 private fun readFixtureText(name: String): String {
     val resourcePath = "fixtures/$name"
-    val inputStream = Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
-        ?: error("Fixture not found: $resourcePath")
+    val inputStream =
+        Thread.currentThread().contextClassLoader.getResourceAsStream(resourcePath)
+            ?: error("Fixture not found: $resourcePath")
     return inputStream.bufferedReader().use { it.readText() }
 }
 
 private fun normalizeXml(xml: String): String {
-    val factory = DocumentBuilderFactory.newInstance().apply {
-        isNamespaceAware = true
-    }
+    val factory =
+        DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+        }
     val document = factory.newDocumentBuilder().parse(InputSource(StringReader(xml)))
     document.normalizeDocument()
 
-    val transformer = TransformerFactory.newInstance().newTransformer().apply {
-        setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
-        setOutputProperty(OutputKeys.INDENT, "no")
-    }
+    val transformer =
+        TransformerFactory.newInstance().newTransformer().apply {
+            setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
+            setOutputProperty(OutputKeys.INDENT, "no")
+        }
 
     val writer = StringWriter()
     transformer.transform(DOMSource(document), StreamResult(writer))
 
-    return writer.toString()
+    return writer
+        .toString()
         .replace(Regex(">\\s+<"), "><")
         .replace("\r\n", "\n")
         .trim()

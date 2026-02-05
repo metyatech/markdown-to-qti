@@ -1,6 +1,5 @@
 package com.metyatech.markdowntoqti
 
-import java.nio.file.Path
 import org.commonmark.ext.gfm.strikethrough.Strikethrough
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension
 import org.commonmark.ext.gfm.tables.TableBlock
@@ -14,14 +13,14 @@ import org.commonmark.ext.task.list.items.TaskListItemsExtension
 import org.commonmark.node.BlockQuote
 import org.commonmark.node.BulletList
 import org.commonmark.node.Code
-import org.commonmark.node.FencedCodeBlock
-import org.commonmark.node.IndentedCodeBlock
 import org.commonmark.node.Emphasis
+import org.commonmark.node.FencedCodeBlock
 import org.commonmark.node.HardLineBreak
 import org.commonmark.node.Heading
 import org.commonmark.node.HtmlBlock
 import org.commonmark.node.HtmlInline
 import org.commonmark.node.Image
+import org.commonmark.node.IndentedCodeBlock
 import org.commonmark.node.Link
 import org.commonmark.node.ListBlock
 import org.commonmark.node.ListItem
@@ -29,12 +28,13 @@ import org.commonmark.node.Node
 import org.commonmark.node.OrderedList
 import org.commonmark.node.Paragraph
 import org.commonmark.node.SoftLineBreak
+import org.commonmark.node.SourceSpan
 import org.commonmark.node.StrongEmphasis
 import org.commonmark.node.Text
 import org.commonmark.node.ThematicBreak
-import org.commonmark.node.SourceSpan
 import org.commonmark.parser.IncludeSourceSpans
 import org.commonmark.parser.Parser
+import java.nio.file.Path
 
 internal data class RenderContext(
     val sectionName: String,
@@ -56,28 +56,50 @@ internal data class RenderedMarkdown(
 internal class MarkdownQtiRenderer(
     private val parser: Parser = defaultParser(),
 ) {
+    companion object {
+        private const val MIN_HEADING_LEVEL = 1
+        private const val MAX_HEADING_LEVEL = 6
+        private const val CLOZE_ESC_OPEN_TOKEN = "__CLOZE_ESC_OPEN__"
+        private const val CLOZE_ESC_CLOSE_TOKEN = "__CLOZE_ESC_CLOSE__"
+
+        private fun defaultParser(): Parser =
+            Parser
+                .builder()
+                .extensions(
+                    listOf(
+                        TablesExtension.create(),
+                        StrikethroughExtension.create(),
+                        TaskListItemsExtension.create(),
+                    ),
+                ).includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES)
+                .build()
+    }
+
     fun renderBlocks(
         markdown: String,
         context: RenderContext,
         clozeHandling: ClozeHandling,
     ): RenderedMarkdown {
-        val normalized = if (clozeHandling == ClozeHandling.ENABLED) {
-            preprocessClozeEscapes(markdown)
-        } else {
-            markdown
-        }
+        val normalized =
+            if (clozeHandling == ClozeHandling.ENABLED) {
+                preprocessClozeEscapes(markdown)
+            } else {
+                markdown
+            }
         val document = parser.parse(normalized)
-        val clozeAnswers = if (clozeHandling == ClozeHandling.ENABLED) {
-            collectClozeAnswers(document)
-        } else {
-            emptyList()
-        }
+        val clozeAnswers =
+            if (clozeHandling == ClozeHandling.ENABLED) {
+                collectClozeAnswers(document)
+            } else {
+                emptyList()
+            }
         val responseIds = responseIdsFor(clozeAnswers)
-        val state = RenderState(
-            clozeHandling = clozeHandling,
-            clozeAnswers = clozeAnswers,
-            responseIds = responseIds,
-        )
+        val state =
+            RenderState(
+                clozeHandling = clozeHandling,
+                clozeAnswers = clozeAnswers,
+                responseIds = responseIds,
+            )
         val builder = StringBuilder()
         renderChildren(document, builder, context, state)
         val xml = builder.toString().trimEnd()
@@ -93,27 +115,30 @@ internal class MarkdownQtiRenderer(
         context: RenderContext,
         clozeHandling: ClozeHandling,
     ): RenderedMarkdown {
-        val normalized = if (clozeHandling == ClozeHandling.ENABLED) {
-            preprocessClozeEscapes(markdown)
-        } else {
-            markdown
-        }
+        val normalized =
+            if (clozeHandling == ClozeHandling.ENABLED) {
+                preprocessClozeEscapes(markdown)
+            } else {
+                markdown
+            }
         val document = parser.parse(normalized)
         val paragraph = document.firstChild
         if (paragraph !is Paragraph || paragraph.next != null) {
             throw unsupported("Inline content must not contain block elements", context, paragraph ?: document)
         }
-        val clozeAnswers = if (clozeHandling == ClozeHandling.ENABLED) {
-            collectClozeAnswers(document)
-        } else {
-            emptyList()
-        }
+        val clozeAnswers =
+            if (clozeHandling == ClozeHandling.ENABLED) {
+                collectClozeAnswers(document)
+            } else {
+                emptyList()
+            }
         val responseIds = responseIdsFor(clozeAnswers)
-        val state = RenderState(
-            clozeHandling = clozeHandling,
-            clozeAnswers = clozeAnswers,
-            responseIds = responseIds,
-        )
+        val state =
+            RenderState(
+                clozeHandling = clozeHandling,
+                clozeAnswers = clozeAnswers,
+                responseIds = responseIds,
+            )
         val builder = StringBuilder()
         renderInlineChildren(paragraph, builder, context, state)
         val xml = builder.toString()
@@ -139,18 +164,21 @@ internal class MarkdownQtiRenderer(
         val listBlock = topLevelBlocks.first() as ListBlock
         val options = mutableListOf<ChoiceOption>()
         listBlock.children().forEach { node ->
-            val listItem = node as? ListItem
-                ?: throw unsupported("Options must be a list of task items", context, node)
-            val taskMarker = findTaskMarker(listItem)
-                ?: throw unsupported("Options must use task list items (e.g., - [x] ...)", context, listItem)
+            val listItem =
+                node as? ListItem
+                    ?: throw unsupported("Options must be a list of task items", context, node)
+            val taskMarker =
+                findTaskMarker(listItem)
+                    ?: throw unsupported("Options must use task list items (e.g., - [x] ...)", context, listItem)
             if (containsNestedList(listItem)) {
                 throw unsupported("Options must be a single flat list (no nesting)", context, listItem)
             }
-            val state = RenderState(
-                clozeHandling = ClozeHandling.DISABLED,
-                clozeAnswers = emptyList(),
-                responseIds = emptyList(),
-            )
+            val state =
+                RenderState(
+                    clozeHandling = ClozeHandling.DISABLED,
+                    clozeAnswers = emptyList(),
+                    responseIds = emptyList(),
+                )
             val itemXml = renderChoiceContent(listItem, context, state)
             if (itemXml.isBlank()) {
                 throw unsupported("Option text must not be empty", context, listItem)
@@ -174,13 +202,23 @@ internal class MarkdownQtiRenderer(
         val localImages: MutableList<String> = mutableListOf(),
     )
 
-    private fun renderChildren(node: Node, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderChildren(
+        node: Node,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         node.children().forEach { child ->
             renderBlock(child, builder, context, state)
         }
     }
 
-    private fun renderBlock(node: Node, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderBlock(
+        node: Node,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         when (node) {
             is Paragraph -> renderParagraph(node, builder, context, state, prefix = null)
             is Heading -> renderHeading(node, builder, context, state)
@@ -221,14 +259,24 @@ internal class MarkdownQtiRenderer(
         builder.append("</qti-p>\n")
     }
 
-    private fun renderHeading(node: Heading, builder: StringBuilder, context: RenderContext, state: RenderState) {
-        val level = node.level.coerceIn(1, 6)
+    private fun renderHeading(
+        node: Heading,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
+        val level = node.level.coerceIn(MIN_HEADING_LEVEL, MAX_HEADING_LEVEL)
         builder.append("<qti-h").append(level).append(">")
         renderInlineChildren(node, builder, context, state)
         builder.append("</qti-h").append(level).append(">\n")
     }
 
-    private fun renderList(node: ListBlock, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderList(
+        node: ListBlock,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         val tag = if (node is BulletList) "qti-ul" else "qti-ol"
         builder.append("<").append(tag)
         if (node is org.commonmark.node.OrderedList && node.startNumber != 1) {
@@ -236,8 +284,9 @@ internal class MarkdownQtiRenderer(
         }
         builder.append(">\n")
         node.children().forEach { child ->
-            val listItem = child as? ListItem
-                ?: throw unsupported("List must contain list items", context, child)
+            val listItem =
+                child as? ListItem
+                    ?: throw unsupported("List must contain list items", context, child)
             renderListItem(listItem, builder, context, state, includeTaskPrefix = true)
         }
         builder.append("</").append(tag).append(">\n")
@@ -263,11 +312,12 @@ internal class MarkdownQtiRenderer(
         includeTaskPrefix: Boolean,
     ) {
         val taskMarker = findTaskMarker(node)
-        val prefix = if (includeTaskPrefix && taskMarker != null) {
-            if (taskMarker.isChecked) "[x] " else "[ ] "
-        } else {
-            null
-        }
+        val prefix =
+            if (includeTaskPrefix && taskMarker != null) {
+                if (taskMarker.isChecked) "[x] " else "[ ] "
+            } else {
+                null
+            }
         var usedPrefix = false
         node.children().forEach { child ->
             if (!usedPrefix && prefix != null && child is Paragraph) {
@@ -318,17 +368,29 @@ internal class MarkdownQtiRenderer(
         return null
     }
 
-    private fun renderCodeBlock(literal: String, builder: StringBuilder, state: RenderState) {
+    private fun renderCodeBlock(
+        literal: String,
+        builder: StringBuilder,
+        state: RenderState,
+    ) {
         builder.append("<qti-pre>")
         appendCodeFragments(literal, builder, state)
         builder.append("</qti-pre>\n")
     }
 
-    private fun renderInlineCode(literal: String, builder: StringBuilder, state: RenderState) {
+    private fun renderInlineCode(
+        literal: String,
+        builder: StringBuilder,
+        state: RenderState,
+    ) {
         appendCodeFragments(literal, builder, state)
     }
 
-    private fun appendCodeFragments(literal: String, builder: StringBuilder, state: RenderState) {
+    private fun appendCodeFragments(
+        literal: String,
+        builder: StringBuilder,
+        state: RenderState,
+    ) {
         if (state.clozeHandling != ClozeHandling.ENABLED) {
             builder.append("<qti-code>")
             builder.append(escapeXml(decodeClozeEscapes(literal, state.clozeHandling)))
@@ -354,7 +416,12 @@ internal class MarkdownQtiRenderer(
         }
     }
 
-    private fun renderTable(node: TableBlock, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderTable(
+        node: TableBlock,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         builder.append("<qti-table>\n")
         node.children().forEach { child ->
             when (child) {
@@ -374,21 +441,33 @@ internal class MarkdownQtiRenderer(
         builder.append("</qti-table>\n")
     }
 
-    private fun renderTableSection(node: Node, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderTableSection(
+        node: Node,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         node.children().forEach { row ->
-            val tableRow = row as? TableRow
-                ?: throw unsupported("Table must contain rows", context, row)
+            val tableRow =
+                row as? TableRow
+                    ?: throw unsupported("Table must contain rows", context, row)
             builder.append("<qti-tr>")
             tableRow.children().forEach { cellNode ->
-                val cell = cellNode as? TableCell
-                    ?: throw unsupported("Table rows must contain cells", context, cellNode)
+                val cell =
+                    cellNode as? TableCell
+                        ?: throw unsupported("Table rows must contain cells", context, cellNode)
                 renderTableCell(cell, builder, context, state)
             }
             builder.append("</qti-tr>\n")
         }
     }
 
-    private fun renderTableCell(cell: TableCell, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderTableCell(
+        cell: TableCell,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         val tag = if (cell.isHeader) "qti-th" else "qti-td"
         builder.append("<").append(tag)
         cell.alignment?.let { alignment ->
@@ -410,13 +489,23 @@ internal class MarkdownQtiRenderer(
         builder.append("</").append(tag).append(">")
     }
 
-    private fun renderInlineChildren(node: Node, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderInlineChildren(
+        node: Node,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         node.children().forEach { child ->
             renderInline(child, builder, context, state)
         }
     }
 
-    private fun renderInline(node: Node, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderInline(
+        node: Node,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         when (node) {
             is Text -> renderText(node.literal, builder, state)
             is Emphasis -> {
@@ -445,7 +534,11 @@ internal class MarkdownQtiRenderer(
         }
     }
 
-    private fun renderText(text: String, builder: StringBuilder, state: RenderState) {
+    private fun renderText(
+        text: String,
+        builder: StringBuilder,
+        state: RenderState,
+    ) {
         if (state.clozeHandling == ClozeHandling.ENABLED) {
             val parts = parseClozePrompt(text)
             parts.forEach { part ->
@@ -468,7 +561,12 @@ internal class MarkdownQtiRenderer(
         }
     }
 
-    private fun renderLink(node: Link, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderLink(
+        node: Link,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         val destination = node.destination
         if (destination.isNullOrBlank()) {
             throw unsupported("Link destination must not be empty", context, node)
@@ -482,7 +580,12 @@ internal class MarkdownQtiRenderer(
         builder.append("</qti-a>")
     }
 
-    private fun renderImage(node: Image, builder: StringBuilder, context: RenderContext, state: RenderState) {
+    private fun renderImage(
+        node: Image,
+        builder: StringBuilder,
+        context: RenderContext,
+        state: RenderState,
+    ) {
         val destination = node.destination
         if (destination.isNullOrBlank()) {
             throw unsupported("Image path must not be empty", context, node)
@@ -501,6 +604,7 @@ internal class MarkdownQtiRenderer(
 
     private fun extractPlainText(node: Node): String {
         val builder = StringBuilder()
+
         fun collect(current: Node) {
             when (current) {
                 is Text -> builder.append(decodeClozeEscapes(current.literal, ClozeHandling.DISABLED))
@@ -513,20 +617,28 @@ internal class MarkdownQtiRenderer(
         return builder.toString()
     }
 
-    private fun unsupported(message: String, context: RenderContext, node: Node): IllegalArgumentException {
+    private fun unsupported(
+        message: String,
+        context: RenderContext,
+        node: Node,
+    ): IllegalArgumentException {
         val location = node.sourceSpans.firstOrNull()
         val formattedLocation = formatLocation(context, location)
-        return IllegalArgumentException("$message${formattedLocation}")
+        return IllegalArgumentException("$message$formattedLocation")
     }
 
-    private fun formatLocation(context: RenderContext, span: SourceSpan?): String {
-        val location = if (span == null) {
-            null
-        } else {
-            val line = context.sectionStartLine + span.lineIndex
-            val column = span.columnIndex + 1
-            "$line:$column"
-        }
+    private fun formatLocation(
+        context: RenderContext,
+        span: SourceSpan?,
+    ): String {
+        val location =
+            if (span == null) {
+                null
+            } else {
+                val line = context.sectionStartLine + span.lineIndex
+                val column = span.columnIndex + 1
+                "$line:$column"
+            }
         val source = context.sourcePath?.toAbsolutePath()?.toString()
         return when {
             source != null && location != null -> " ($source:$location)"
@@ -538,6 +650,7 @@ internal class MarkdownQtiRenderer(
 
     private fun collectClozeAnswers(document: Node): List<String> {
         val answers = mutableListOf<String>()
+
         fun visit(node: Node) {
             when (node) {
                 is Text -> {
@@ -577,13 +690,15 @@ internal class MarkdownQtiRenderer(
         }
     }
 
-    private fun preprocessClozeEscapes(markdown: String): String {
-        return markdown
+    private fun preprocessClozeEscapes(markdown: String): String =
+        markdown
             .replace("\\{{", CLOZE_ESC_OPEN_TOKEN)
             .replace("\\}}", CLOZE_ESC_CLOSE_TOKEN)
-    }
 
-    private fun decodeClozeEscapes(value: String, clozeHandling: ClozeHandling): String {
+    private fun decodeClozeEscapes(
+        value: String,
+        clozeHandling: ClozeHandling,
+    ): String {
         if (clozeHandling == ClozeHandling.DISABLED) {
             return value
         }
@@ -617,13 +732,9 @@ internal class MarkdownQtiRenderer(
             }
             if (prompt.startsWith("{{", index)) {
                 val endIndex = prompt.indexOf("}}", index + 2)
-                if (endIndex == -1) {
-                    throw IllegalArgumentException("Unclosed cloze blank in prompt")
-                }
+                require(endIndex != -1) { "Unclosed cloze blank in prompt" }
                 val answer = prompt.substring(index + 2, endIndex)
-                if (answer.isBlank()) {
-                    throw IllegalArgumentException("Cloze blank must not be empty")
-                }
+                require(answer.trim().isNotEmpty()) { "Cloze blank must not be empty" }
                 flushText()
                 parts.add(ClozePart.Blank(ClozeBlank(answer.trim())))
                 index = endIndex + 2
@@ -638,37 +749,25 @@ internal class MarkdownQtiRenderer(
     }
 
     private sealed class ClozePart {
-        data class Text(val value: String) : ClozePart()
-        data class Blank(val blank: ClozeBlank) : ClozePart()
+        data class Text(
+            val value: String,
+        ) : ClozePart()
+
+        data class Blank(
+            val blank: ClozeBlank,
+        ) : ClozePart()
     }
 
     private data class ClozeBlank(
         val answer: String,
     )
+}
 
-    private companion object {
-        const val CLOZE_ESC_OPEN_TOKEN = "__CLOZE_ESC_OPEN__"
-        const val CLOZE_ESC_CLOSE_TOKEN = "__CLOZE_ESC_CLOSE__"
-
-        fun defaultParser(): Parser {
-            return Parser.builder()
-                .extensions(
-                    listOf(
-                        TablesExtension.create(),
-                        StrikethroughExtension.create(),
-                        TaskListItemsExtension.create(),
-                    ),
-                )
-                .includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES)
-                .build()
+private fun Node.children(): Sequence<Node> =
+    sequence {
+        var current = firstChild
+        while (current != null) {
+            yield(current)
+            current = current.next
         }
     }
-}
-
-private fun Node.children(): Sequence<Node> = sequence {
-    var current = firstChild
-    while (current != null) {
-        yield(current)
-        current = current.next
-    }
-}
