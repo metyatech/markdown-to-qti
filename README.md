@@ -45,7 +45,7 @@ Options:
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`).
 - `--test-title <title>`: Assessment test title (required).
 - `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
-- `--validate-only`: Parse and validate XML without writing files.
+- `--validate-only`: Validate Markdown against `docs/markdown-question-spec.md` and check generated XML well-formedness without writing files.
 - `--verbose`: Log processed files.
 
 ### CLI Details
@@ -53,7 +53,7 @@ Options:
 - When `--input` is a directory, all `*.md` files inside it are processed.
 - Output files are written as `<input-file>.qti.xml` under `--output-dir` or `<input-dir>/qti-out` when omitted.
 - An `assessment-test.qti.xml` file is written alongside outputs, referencing all generated items in that directory.
-- `--validate-only` performs XML well-formedness checks without writing files.
+- `--validate-only` performs Markdown schema validation (per `docs/markdown-question-spec.md`) and XML well-formedness checks without writing files.
 - Local image files referenced in Markdown are copied to the output directory, preserving
   the relative paths.
 - Errors include the input path when possible and return a non-zero exit code.

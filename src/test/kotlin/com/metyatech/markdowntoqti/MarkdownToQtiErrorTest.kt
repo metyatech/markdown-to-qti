@@ -79,6 +79,50 @@ class MarkdownToQtiErrorTest {
     }
 
     @Test
+    fun convertMarkdownToQti_rejectsUnknownSectionHeading() {
+        val markdown = """
+            # Title
+
+            ## Type
+            descriptive
+
+            ## Prompt
+            Prompt.
+
+            ## Unknown
+            Surprise.
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            convertMarkdownToQti(markdown, "unknown-section")
+        }
+
+        assertTrue(exception.message?.contains("Unknown section heading") == true)
+    }
+
+    @Test
+    fun convertMarkdownToQti_rejectsDuplicateSectionHeading() {
+        val markdown = """
+            # Title
+
+            ## Type
+            descriptive
+
+            ## Prompt
+            Prompt.
+
+            ## Prompt
+            Prompt again.
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            convertMarkdownToQti(markdown, "duplicate-section")
+        }
+
+        assertTrue(exception.message?.contains("Duplicate section heading") == true)
+    }
+
+    @Test
     fun convertMarkdownToQti_requiresTypeSection() {
         val markdown = """
             # Title
@@ -109,7 +153,27 @@ class MarkdownToQtiErrorTest {
             convertMarkdownToQti(markdown, "missing-type-value")
         }
 
-        assertTrue(exception.message?.contains("Type value missing") == true)
+        assertTrue(exception.message?.contains("Type value") == true)
+    }
+
+    @Test
+    fun convertMarkdownToQti_rejectsTypeValueWithLeadingBlankLine() {
+        val markdown = """
+            # Title
+
+            ## Type
+
+            descriptive
+
+            ## Prompt
+            Prompt.
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            convertMarkdownToQti(markdown, "type-blank-line")
+        }
+
+        assertTrue(exception.message?.contains("immediately after ## Type") == true)
     }
 
     @Test
@@ -278,6 +342,28 @@ class MarkdownToQtiErrorTest {
     }
 
     @Test
+    fun convertMarkdownToQti_rejectsScoringNotWrittenAsList() {
+        val markdown = """
+            # Title
+
+            ## Type
+            descriptive
+
+            ## Prompt
+            Prompt.
+
+            ## Scoring
+            2: Criterion
+        """.trimIndent()
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            convertMarkdownToQti(markdown, "scoring-not-list")
+        }
+
+        assertTrue(exception.message?.contains("Scoring section must be a Markdown list") == true)
+    }
+
+    @Test
     fun convertMarkdownToQti_rejectsClozeWithoutBlanks() {
         val markdown = """
             # Title
@@ -351,6 +437,27 @@ class MarkdownToQtiErrorTest {
         }
 
         assertTrue(exception.message?.contains("Raw HTML") == true)
+    }
+
+    @Test
+    fun convertMarkdownToQti_allowsCodeFenceContainingSectionLikeHeading() {
+        val markdown = """
+            # Title
+
+            ## Type
+            descriptive
+
+            ## Prompt
+            Here is code:
+
+            ```
+            ## not a section
+            ```
+        """.trimIndent()
+
+        val xml = convertMarkdownToQti(markdown, "code-fence-heading")
+
+        assertTrue(xml.contains("## not a section"))
     }
 
     @Test

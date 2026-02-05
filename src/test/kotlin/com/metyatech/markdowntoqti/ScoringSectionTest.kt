@@ -10,11 +10,11 @@ class ScoringSectionTest {
     @Test
     fun parseScoringSection_acceptsIntegerAndDecimalPoints() {
         val lines = listOf(
-            "2: Identifies chlorophyll as a light-absorbing pigment",
-            "1.5: Mentions conversion of light energy to chemical energy",
+            "- 2: Identifies chlorophyll as a light-absorbing pigment",
+            "- 1.5: Mentions conversion of light energy to chemical energy",
         )
 
-        val section = SectionContent("Scoring", lines, 1)
+        val section = SectionContent("Scoring", lines, headingLine = 1, startLine = 2)
         val criteria = parseScoringSection(section, MarkdownQtiRenderer(), null)
 
         assertEquals(
@@ -28,9 +28,9 @@ class ScoringSectionTest {
 
     @Test
     fun parseScoringSection_rejectsNonNumericPoints() {
-        val lines = listOf("two: Gives a correct explanation")
+        val lines = listOf("- two: Gives a correct explanation")
 
-        val section = SectionContent("Scoring", lines, 1)
+        val section = SectionContent("Scoring", lines, headingLine = 1, startLine = 2)
         val exception = assertThrows<IllegalArgumentException> {
             parseScoringSection(section, MarkdownQtiRenderer(), null)
         }
@@ -40,9 +40,9 @@ class ScoringSectionTest {
 
     @Test
     fun parseScoringSection_rejectsEmptyCriterion() {
-        val lines = listOf("2:")
+        val lines = listOf("- 2:")
 
-        val section = SectionContent("Scoring", lines, 1)
+        val section = SectionContent("Scoring", lines, headingLine = 1, startLine = 2)
         val exception = assertThrows<IllegalArgumentException> {
             parseScoringSection(section, MarkdownQtiRenderer(), null)
         }

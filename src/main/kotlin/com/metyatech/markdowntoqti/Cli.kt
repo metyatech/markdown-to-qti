@@ -32,25 +32,31 @@ fun runCli(
     }
     val assessmentItemsByOutputDir = mutableMapOf<Path, MutableList<AssessmentItemRef>>()
 
-    inputs.forEach { inputPath ->
-        val markdown = inputPath.readText()
-        val identifier = inputPath.fileNameWithoutExtension()
-        val conversion = convertMarkdownToQtiWithAssets(markdown, identifier, inputPath)
-        if (parsed.validateOnly) {
-            validateXml(conversion.qtiXml)
-            if (parsed.verbose) {
-                output.println("Validated: ${inputPath.toAbsolutePath()}")
+    for (inputPath in inputs) {
+        try {
+            val markdown = inputPath.readText()
+            val identifier = inputPath.fileNameWithoutExtension()
+            val conversion = convertMarkdownToQtiWithAssets(markdown, identifier, inputPath)
+            if (parsed.validateOnly) {
+                validateXml(conversion.qtiXml)
+                if (parsed.verbose) {
+                    output.println("Validated: ${inputPath.toAbsolutePath()}")
+                }
+            } else {
+                val resolvedOutputDir = (outputDir ?: defaultOutputDirFor(inputPath)).normalize()
+                Files.createDirectories(resolvedOutputDir)
+                val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
+                outputFile.writeText(conversion.qtiXml)
+                copyLocalImages(conversion.localImages, resolvedOutputDir)
+                registerAssessmentItem(assessmentItemsByOutputDir, resolvedOutputDir, identifier)
+                if (parsed.verbose) {
+                    output.println("Wrote: ${outputFile.toAbsolutePath()}")
+                }
             }
-        } else {
-            val resolvedOutputDir = (outputDir ?: defaultOutputDirFor(inputPath)).normalize()
-            Files.createDirectories(resolvedOutputDir)
-            val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
-            outputFile.writeText(conversion.qtiXml)
-            copyLocalImages(conversion.localImages, resolvedOutputDir)
-            registerAssessmentItem(assessmentItemsByOutputDir, resolvedOutputDir, identifier)
-            if (parsed.verbose) {
-                output.println("Wrote: ${outputFile.toAbsolutePath()}")
-            }
+        } catch (exception: Exception) {
+            val message = exception.message?.takeIf { it.isNotBlank() } ?: exception.javaClass.simpleName
+            error.println("Error in ${inputPath.toAbsolutePath()}: $message")
+            return 1
         }
     }
 

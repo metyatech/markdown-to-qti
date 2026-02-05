@@ -44,6 +44,7 @@ data class QtiConversionResult(
 internal data class SectionContent(
     val name: String,
     val lines: List<String>,
+    val headingLine: Int,
     val startLine: Int,
 ) {
     fun text(): String = lines.joinToString("\n")
@@ -85,6 +86,9 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
 
     val titleLine = nextNonEmptyLine()
         ?: throw IllegalArgumentException("Missing title heading")
+    if (titleLine.first.trim() == "---") {
+        throw IllegalArgumentException("Front matter is not supported")
+    }
     if (!titleLine.first.startsWith("# ")) {
         throw IllegalArgumentException("Title must start with '# '")
     }
@@ -93,7 +97,8 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         throw IllegalArgumentException("Title must not be empty")
     }
 
-    val sections = mutableMapOf<String, SectionContent>()
+    val sectionsInOrder = mutableListOf<SectionContent>()
+    val sectionsByName = mutableMapOf<String, SectionContent>()
     while (index < lines.size) {
         val line = lines[index]
         if (line.isBlank()) {
@@ -103,23 +108,44 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         if (!line.startsWith("## ")) {
             throw IllegalArgumentException("Unexpected content outside section: $line")
         }
+        val headingLine = index + 1
         val heading = line.removePrefix("## ").trim()
+        if (!ALLOWED_SECTION_NAMES.contains(heading)) {
+            throw schemaError("Unknown section heading: $heading", sourcePath, headingLine)
+        }
+        if (sectionsByName.containsKey(heading)) {
+            throw schemaError("Duplicate section heading: $heading", sourcePath, headingLine)
+        }
         index += 1
 
         val content = mutableListOf<String>()
         val startLine = index + 1
-        while (index < lines.size && !lines[index].startsWith("## ")) {
+        var fence: FenceState? = null
+        while (index < lines.size) {
+            val current = lines[index]
+            if (fence == null && current.startsWith("## ")) {
+                break
+            }
+            fence = updateFenceState(current, fence)
             content.add(lines[index])
             index += 1
         }
-        sections[heading] = SectionContent(heading, content, startLine)
+        val section = SectionContent(heading, content, headingLine, startLine)
+        sectionsInOrder.add(section)
+        sectionsByName[heading] = section
     }
 
-    val typeSection = sections["Type"]
+    val typeSection = sectionsByName["Type"]
         ?: throw IllegalArgumentException("Missing ## Type section")
-    val typeValue = typeSection.lines.firstOrNull { it.isNotBlank() }
-        ?.trim()
-        ?: throw IllegalArgumentException("Type value missing")
+    val firstTypeLine = typeSection.lines.firstOrNull()
+        ?: throw schemaError("Type value missing", sourcePath, typeSection.startLine)
+    if (firstTypeLine.isBlank()) {
+        throw schemaError("Type value must be on the line immediately after ## Type", sourcePath, typeSection.startLine)
+    }
+    val typeValue = firstTypeLine.trim()
+    if (typeSection.lines.drop(1).any { it.isNotBlank() }) {
+        throw schemaError("Type section must contain only a single word", sourcePath, typeSection.startLine)
+    }
     val type = when (typeValue) {
         "descriptive" -> QuestionType.DESCRIPTIVE
         "choice" -> QuestionType.CHOICE
@@ -127,13 +153,16 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         else -> throw IllegalArgumentException("Unknown question type: $typeValue")
     }
 
+    validateSectionOrder(sectionsInOrder, type, sourcePath)
+
     val renderer = MarkdownQtiRenderer()
 
-    val promptSection = sections["Prompt"]
+    val promptSection = sectionsByName["Prompt"]
         ?: throw IllegalArgumentException("Missing ## Prompt section")
     if (promptSection.isBlank()) {
         throw IllegalArgumentException("Prompt section must not be empty")
     }
+    validateNoH1H2HeadingsInContent(promptSection, sourcePath)
     val promptContext = RenderContext("Prompt", sourcePath, promptSection.startLine)
     val promptRender = renderer.renderBlocks(
         markdown = promptSection.text(),
@@ -144,26 +173,29 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         throw IllegalArgumentException("Cloze prompt must include at least one blank")
     }
 
-    val explanationRender = sections["Explanation"]?.let { section ->
+    val explanationRender = sectionsByName["Explanation"]?.let { section ->
         if (section.isBlank()) {
             throw IllegalArgumentException("Explanation section must not be empty")
         }
+        validateNoH1H2HeadingsInContent(section, sourcePath)
         val context = RenderContext("Explanation", sourcePath, section.startLine)
         renderer.renderBlocks(section.text(), context, ClozeHandling.DISABLED)
     }
 
-    val scoring = sections["Scoring"]?.let { section ->
+    val scoring = sectionsByName["Scoring"]?.let { section ->
         parseScoringSection(section, renderer, sourcePath)
     } ?: emptyList()
 
+    val optionsSection = sectionsByName["Options"]
     val options = if (type == QuestionType.CHOICE) {
-        val optionsSection = sections["Options"]
+        val optionsRequiredSection = optionsSection
             ?: throw IllegalArgumentException("Missing ## Options section")
-        if (optionsSection.isBlank()) {
+        if (optionsRequiredSection.isBlank()) {
             throw IllegalArgumentException("Options must not be empty")
         }
-        val context = RenderContext("Options", sourcePath, optionsSection.startLine)
-        val renderedOptions = renderer.renderChoiceOptions(optionsSection.text(), context)
+        validateNoH1H2HeadingsInContent(optionsRequiredSection, sourcePath)
+        val context = RenderContext("Options", sourcePath, optionsRequiredSection.startLine)
+        val renderedOptions = renderer.renderChoiceOptions(optionsRequiredSection.text(), context)
         if (renderedOptions.isEmpty()) {
             throw IllegalArgumentException("Options must not be empty")
         }
@@ -173,6 +205,9 @@ private fun parseMarkdownQuestion(markdown: String, identifier: String, sourcePa
         }
         renderedOptions
     } else {
+        if (optionsSection != null) {
+            throw schemaError("## Options is only allowed for type 'choice'", sourcePath, optionsSection.headingLine)
+        }
         emptyList()
     }
 
@@ -203,15 +238,16 @@ internal fun parseScoringSection(
     val pattern = Regex("""^([0-9]+(?:\.[0-9]+)?):\s*(.*)$""")
 
     section.lines.forEachIndexed { index, rawLine ->
-        val line = rawLine.trim()
-        if (line.isEmpty()) {
+        if (rawLine.isBlank()) {
             return@forEachIndexed
         }
-        val content = if (line.startsWith("- ")) {
-            line.removePrefix("- ").trim()
-        } else {
-            line
+        if (rawLine.firstOrNull()?.isWhitespace() == true) {
+            throw schemaError("Scoring must be a single flat list (no indentation)", sourcePath, section.startLine + index)
         }
+        if (!rawLine.startsWith("- ")) {
+            throw schemaError("Scoring section must be a Markdown list with '- <points>: <criterion>' items", sourcePath, section.startLine + index)
+        }
+        val content = rawLine.removePrefix("- ").trim()
         val match = pattern.matchEntire(content)
             ?: throw IllegalArgumentException("Invalid scoring points in line: $rawLine")
         val points = match.groupValues[1]
@@ -224,8 +260,123 @@ internal fun parseScoringSection(
         criteria.add(ScoringCriterion(BigDecimal(points), rendered.xml))
     }
 
+    if (criteria.isEmpty()) {
+        throw IllegalArgumentException("Scoring section must not be empty")
+    }
     return criteria
 }
+
+private fun validateSectionOrder(sections: List<SectionContent>, type: QuestionType, sourcePath: Path?) {
+    if (sections.isEmpty()) {
+        throw IllegalArgumentException("Missing ## Type section")
+    }
+    val typeIndex = sections.indexOfFirst { it.name == "Type" }
+    if (typeIndex != 0) {
+        val line = sections.firstOrNull()?.headingLine
+        throw schemaError("First section must be ## Type", sourcePath, line)
+    }
+    val promptIndex = sections.indexOfFirst { it.name == "Prompt" }
+    if (promptIndex == -1) {
+        return
+    }
+    if (promptIndex < typeIndex) {
+        throw schemaError("## Prompt must appear after ## Type", sourcePath, sections[promptIndex].headingLine)
+    }
+    if (type == QuestionType.CHOICE) {
+        val optionsIndex = sections.indexOfFirst { it.name == "Options" }
+        if (optionsIndex != -1 && optionsIndex < promptIndex) {
+            throw schemaError("## Options must appear after ## Prompt", sourcePath, sections[optionsIndex].headingLine)
+        }
+        val explanationIndex = sections.indexOfFirst { it.name == "Explanation" }
+        if (explanationIndex != -1 && optionsIndex != -1 && explanationIndex < optionsIndex) {
+            throw schemaError("## Explanation must appear after ## Options", sourcePath, sections[explanationIndex].headingLine)
+        }
+        val scoringIndex = sections.indexOfFirst { it.name == "Scoring" }
+        if (scoringIndex != -1 && optionsIndex != -1 && scoringIndex < optionsIndex) {
+            throw schemaError("## Scoring must appear after ## Options", sourcePath, sections[scoringIndex].headingLine)
+        }
+    } else {
+        val explanationIndex = sections.indexOfFirst { it.name == "Explanation" }
+        if (explanationIndex != -1 && explanationIndex < promptIndex) {
+            throw schemaError("## Explanation must appear after ## Prompt", sourcePath, sections[explanationIndex].headingLine)
+        }
+        val scoringIndex = sections.indexOfFirst { it.name == "Scoring" }
+        if (scoringIndex != -1 && scoringIndex < promptIndex) {
+            throw schemaError("## Scoring must appear after ## Prompt", sourcePath, sections[scoringIndex].headingLine)
+        }
+    }
+}
+
+private fun validateNoH1H2HeadingsInContent(section: SectionContent, sourcePath: Path?) {
+    var fence: FenceState? = null
+    section.lines.forEachIndexed { index, rawLine ->
+        fence = updateFenceState(rawLine, fence)
+        if (fence != null) {
+            return@forEachIndexed
+        }
+
+        val leadingSpaces = rawLine.takeWhile { it == ' ' }.length
+        if (leadingSpaces > 3) {
+            return@forEachIndexed
+        }
+        val rest = rawLine.drop(leadingSpaces)
+        if (rest.startsWith("# ") || rest.startsWith("## ")) {
+            throw schemaError(
+                "Headings inside ## ${section.name} must use '###' or deeper (found '${rest.take(3).trim()}')",
+                sourcePath,
+                section.startLine + index,
+            )
+        }
+    }
+}
+
+private data class FenceState(
+    val fenceChar: Char,
+    val fenceLength: Int,
+)
+
+private fun updateFenceState(line: String, state: FenceState?): FenceState? {
+    val leadingSpaces = line.takeWhile { it == ' ' }.length
+    if (leadingSpaces > 3) {
+        return state
+    }
+    val rest = line.drop(leadingSpaces)
+    val fenceChar = rest.firstOrNull()
+    if (fenceChar != '`' && fenceChar != '~') {
+        return state
+    }
+    val runLength = rest.takeWhile { it == fenceChar }.length
+    if (runLength < 3) {
+        return state
+    }
+    return if (state == null) {
+        FenceState(fenceChar, runLength)
+    } else {
+        if (state.fenceChar == fenceChar && runLength >= state.fenceLength && rest.drop(runLength).trim().isEmpty()) {
+            null
+        } else {
+            state
+        }
+    }
+}
+
+private fun schemaError(message: String, sourcePath: Path?, line: Int?): IllegalArgumentException {
+    val suffix = when {
+        sourcePath != null && line != null -> " (${sourcePath.toAbsolutePath()}:$line)"
+        sourcePath != null -> " (${sourcePath.toAbsolutePath()})"
+        line != null -> " (line $line)"
+        else -> ""
+    }
+    return IllegalArgumentException(message + suffix)
+}
+
+private val ALLOWED_SECTION_NAMES = setOf(
+    "Type",
+    "Prompt",
+    "Options",
+    "Explanation",
+    "Scoring",
+)
 
 private fun resolveLocalImages(imageSources: List<String>, sourcePath: Path): List<LocalImage> {
     val sourceDir = sourcePath.parent
