@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber", "MaximumLineLength", "MaxLineLength")
+
 package com.metyatech.markdowntoqti
 
 import java.math.BigDecimal
@@ -75,6 +77,10 @@ fun convertMarkdownToQtiWithAssets(
     return QtiConversionResult(QtiBuilder(parsed.question).build(), localImages)
 }
 
+private const val MIN_FENCE_LENGTH = 3
+private const val MAX_LEADING_SPACES = 3
+
+@Suppress("LongMethod", "CyclomaticComplexMethod", "ThrowsCount")
 private fun parseMarkdownQuestion(
     markdown: String,
     identifier: String,
@@ -99,16 +105,10 @@ private fun parseMarkdownQuestion(
     val titleLine =
         nextNonEmptyLine()
             ?: throw IllegalArgumentException("Missing title heading")
-    if (titleLine.first.trim() == "---") {
-        throw IllegalArgumentException("Front matter is not supported")
-    }
-    if (!titleLine.first.startsWith("# ")) {
-        throw IllegalArgumentException("Title must start with '# '")
-    }
+    require(titleLine.first.trim() != "---") { "Front matter is not supported" }
+    require(titleLine.first.startsWith("# ")) { "Title must start with '# '" }
     val title = titleLine.first.removePrefix("# ").trim()
-    if (title.isBlank()) {
-        throw IllegalArgumentException("Title must not be empty")
-    }
+    require(title.isNotBlank()) { "Title must not be empty" }
 
     val sectionsInOrder = mutableListOf<SectionContent>()
     val sectionsByName = mutableMapOf<String, SectionContent>()
@@ -118,9 +118,7 @@ private fun parseMarkdownQuestion(
             index += 1
             continue
         }
-        if (!line.startsWith("## ")) {
-            throw IllegalArgumentException("Unexpected content outside section: $line")
-        }
+        require(line.startsWith("## ")) { "Unexpected content outside section: $line" }
         val headingLine = index + 1
         val heading = line.removePrefix("## ").trim()
         if (!ALLOWED_SECTION_NAMES.contains(heading)) {
@@ -176,9 +174,7 @@ private fun parseMarkdownQuestion(
     val promptSection =
         sectionsByName["Prompt"]
             ?: throw IllegalArgumentException("Missing ## Prompt section")
-    if (promptSection.isBlank()) {
-        throw IllegalArgumentException("Prompt section must not be empty")
-    }
+    require(promptSection.lines.any { it.isNotBlank() }) { "Prompt section must not be empty" }
     validateNoH1H2HeadingsInContent(promptSection, sourcePath)
     val promptContext = RenderContext("Prompt", sourcePath, promptSection.startLine)
     val promptRender =
@@ -187,15 +183,13 @@ private fun parseMarkdownQuestion(
             context = promptContext,
             clozeHandling = if (type == QuestionType.CLOZE) ClozeHandling.ENABLED else ClozeHandling.DISABLED,
         )
-    if (type == QuestionType.CLOZE && promptRender.clozeAnswers.isEmpty()) {
-        throw IllegalArgumentException("Cloze prompt must include at least one blank")
+    if (type == QuestionType.CLOZE) {
+        require(promptRender.clozeAnswers.isNotEmpty()) { "Cloze prompt must include at least one blank" }
     }
 
     val explanationRender =
         sectionsByName["Explanation"]?.let { section ->
-            if (section.isBlank()) {
-                throw IllegalArgumentException("Explanation section must not be empty")
-            }
+            require(section.lines.any { it.isNotBlank() }) { "Explanation section must not be empty" }
             validateNoH1H2HeadingsInContent(section, sourcePath)
             val context = RenderContext("Explanation", sourcePath, section.startLine)
             renderer.renderBlocks(section.text(), context, ClozeHandling.DISABLED)
@@ -212,23 +206,21 @@ private fun parseMarkdownQuestion(
             val optionsRequiredSection =
                 optionsSection
                     ?: throw IllegalArgumentException("Missing ## Options section")
-            if (optionsRequiredSection.isBlank()) {
-                throw IllegalArgumentException("Options must not be empty")
-            }
+            require(optionsRequiredSection.lines.any { it.isNotBlank() }) { "Options must not be empty" }
             validateNoH1H2HeadingsInContent(optionsRequiredSection, sourcePath)
             val context = RenderContext("Options", sourcePath, optionsRequiredSection.startLine)
             val renderedOptions = renderer.renderChoiceOptions(optionsRequiredSection.text(), context)
-            if (renderedOptions.isEmpty()) {
-                throw IllegalArgumentException("Options must not be empty")
-            }
+            require(renderedOptions.isNotEmpty()) { "Options must not be empty" }
             val correctCount = renderedOptions.count { it.isCorrect }
-            if (correctCount != 1) {
-                throw IllegalArgumentException("Choice question must have exactly one correct option")
-            }
+            require(correctCount == 1) { "Choice question must have exactly one correct option" }
             renderedOptions
         } else {
             if (optionsSection != null) {
-                throw schemaError("## Options is only allowed for type 'choice'", sourcePath, optionsSection.headingLine)
+                throw schemaError(
+                    "## Options is only allowed for type 'choice'",
+                    sourcePath,
+                    optionsSection.headingLine
+                )
             }
             emptyList()
         }
@@ -265,7 +257,11 @@ internal fun parseScoringSection(
             return@forEachIndexed
         }
         if (rawLine.firstOrNull()?.isWhitespace() == true) {
-            throw schemaError("Scoring must be a single flat list (no indentation)", sourcePath, section.startLine + index)
+            throw schemaError(
+                "Scoring must be a single flat list (no indentation)",
+                sourcePath,
+                section.startLine + index
+            )
         }
         if (!rawLine.startsWith("- ")) {
             throw schemaError(
@@ -280,28 +276,23 @@ internal fun parseScoringSection(
                 ?: throw IllegalArgumentException("Invalid scoring points in line: $rawLine")
         val points = match.groupValues[1]
         val criterion = match.groupValues[2].trim()
-        if (criterion.isBlank()) {
-            throw IllegalArgumentException("Scoring criterion must not be empty: $rawLine")
-        }
+        require(criterion.isNotBlank()) { "Scoring criterion must not be empty: $rawLine" }
         val context = RenderContext("Scoring", sourcePath, section.startLine + index)
         val rendered = renderer.renderInline(criterion, context, ClozeHandling.DISABLED)
         criteria.add(ScoringCriterion(BigDecimal(points), rendered.xml))
     }
 
-    if (criteria.isEmpty()) {
-        throw IllegalArgumentException("Scoring section must not be empty")
-    }
+    require(criteria.isNotEmpty()) { "Scoring section must not be empty" }
     return criteria
 }
 
+@Suppress("ThrowsCount")
 private fun validateSectionOrder(
     sections: List<SectionContent>,
     type: QuestionType,
     sourcePath: Path?,
 ) {
-    if (sections.isEmpty()) {
-        throw IllegalArgumentException("Missing ## Type section")
-    }
+    require(sections.isNotEmpty()) { "Missing ## Type section" }
     val typeIndex = sections.indexOfFirst { it.name == "Type" }
     if (typeIndex != 0) {
         val line = sections.firstOrNull()?.headingLine
@@ -321,7 +312,11 @@ private fun validateSectionOrder(
         }
         val explanationIndex = sections.indexOfFirst { it.name == "Explanation" }
         if (explanationIndex != -1 && optionsIndex != -1 && explanationIndex < optionsIndex) {
-            throw schemaError("## Explanation must appear after ## Options", sourcePath, sections[explanationIndex].headingLine)
+            throw schemaError(
+                "## Explanation must appear after ## Options",
+                sourcePath,
+                sections[explanationIndex].headingLine
+            )
         }
         val scoringIndex = sections.indexOfFirst { it.name == "Scoring" }
         if (scoringIndex != -1 && optionsIndex != -1 && scoringIndex < optionsIndex) {
@@ -330,7 +325,11 @@ private fun validateSectionOrder(
     } else {
         val explanationIndex = sections.indexOfFirst { it.name == "Explanation" }
         if (explanationIndex != -1 && explanationIndex < promptIndex) {
-            throw schemaError("## Explanation must appear after ## Prompt", sourcePath, sections[explanationIndex].headingLine)
+            throw schemaError(
+                "## Explanation must appear after ## Prompt",
+                sourcePath,
+                sections[explanationIndex].headingLine
+            )
         }
         val scoringIndex = sections.indexOfFirst { it.name == "Scoring" }
         if (scoringIndex != -1 && scoringIndex < promptIndex) {
@@ -351,7 +350,7 @@ private fun validateNoH1H2HeadingsInContent(
         }
 
         val leadingSpaces = rawLine.takeWhile { it == ' ' }.length
-        if (leadingSpaces > 3) {
+        if (leadingSpaces > MAX_LEADING_SPACES) {
             return@forEachIndexed
         }
         val rest = rawLine.drop(leadingSpaces)
@@ -375,7 +374,7 @@ private fun updateFenceState(
     state: FenceState?,
 ): FenceState? {
     val leadingSpaces = line.takeWhile { it == ' ' }.length
-    if (leadingSpaces > 3) {
+    if (leadingSpaces > MAX_LEADING_SPACES) {
         return state
     }
     val rest = line.drop(leadingSpaces)
@@ -384,7 +383,7 @@ private fun updateFenceState(
         return state
     }
     val runLength = rest.takeWhile { it == fenceChar }.length
-    if (runLength < 3) {
+    if (runLength < MIN_FENCE_LENGTH) {
         return state
     }
     return if (state == null) {
@@ -432,12 +431,12 @@ private fun resolveLocalImages(
             return@mapNotNull null
         }
         val sourcePathValue = Path.of(source)
-        if (sourcePathValue.isAbsolute) {
-            throw IllegalArgumentException("Image path must be relative in ${sourcePath.toAbsolutePath()}: $source")
+        require(!sourcePathValue.isAbsolute) {
+            "Image path must be relative in ${sourcePath.toAbsolutePath()}: $source"
         }
         val resolvedSource = sourceDir.resolve(sourcePathValue).normalize()
-        if (!Files.exists(resolvedSource) || !Files.isRegularFile(resolvedSource)) {
-            throw IllegalArgumentException("Image file not found in ${sourcePath.toAbsolutePath()}: $source")
+        require(Files.exists(resolvedSource) && Files.isRegularFile(resolvedSource)) {
+            "Image file not found in ${sourcePath.toAbsolutePath()}: $source"
         }
         LocalImage(resolvedSource, sourcePathValue.normalize())
     }
@@ -524,7 +523,9 @@ private class QtiBuilder(
         if (!hasExplanation()) {
             return
         }
-        builder.append("  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n")
+        builder.append(
+            "  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n"
+        )
     }
 
     private fun appendItemBody(builder: StringBuilder) {
@@ -583,7 +584,9 @@ private class QtiBuilder(
         if (explanation == null || explanation.xml.isBlank()) {
             return
         }
-        builder.append("  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" identifier=\"EXPLANATION\" show-hide=\"show\">\n")
+        builder.append(
+            "  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" identifier=\"EXPLANATION\" show-hide=\"show\">\n"
+        )
         builder.append("    <qti-content-body>\n")
         appendXml(builder, explanation.xml)
         builder.append("    </qti-content-body>\n")

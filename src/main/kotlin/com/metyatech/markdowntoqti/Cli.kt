@@ -53,7 +53,7 @@ fun runCli(
                     output.println("Wrote: ${outputFile.toAbsolutePath()}")
                 }
             }
-        } catch (exception: Exception) {
+        } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
             val message = exception.message?.takeIf { it.isNotBlank() } ?: exception.javaClass.simpleName
             error.println("Error in ${inputPath.toAbsolutePath()}: $message")
             return 1
@@ -226,7 +226,8 @@ private fun copyLocalImages(
 
 private fun printUsage(error: PrintStream) {
     error.println(
-        "Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]",
+        "Usage: markdown-to-qti --input <path> [--input <path> ...] " +
+            "--test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]",
     )
     error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
 }
@@ -276,7 +277,9 @@ private fun buildAssessmentTest(
             "    identifier=\"assessment-test\"\n" +
             "    title=\"${escapeXml(testTitle)}\">\n",
     )
-    builder.append("  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n")
+    builder.append(
+        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n"
+    )
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
     items.forEach { item ->
         builder.append("      <qti-assessment-item-ref identifier=\"")
