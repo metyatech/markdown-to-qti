@@ -54,6 +54,7 @@ tasks.withType<CompileUsingKotlinDaemon>().configureEach {
 }
 
 spotless {
+    lineEndings = com.diffplug.spotless.LineEnding.UNIX
     kotlin {
         ktlint()
     }
