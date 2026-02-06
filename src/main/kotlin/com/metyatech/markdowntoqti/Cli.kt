@@ -53,7 +53,9 @@ fun runCli(
                     output.println("Wrote: ${outputFile.toAbsolutePath()}")
                 }
             }
-        } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") exception: Exception,
+        ) {
             val message = exception.message?.takeIf { it.isNotBlank() } ?: exception.javaClass.simpleName
             error.println("Error in ${inputPath.toAbsolutePath()}: $message")
             return 1
@@ -278,7 +280,7 @@ private fun buildAssessmentTest(
             "    title=\"${escapeXml(testTitle)}\">\n",
     )
     builder.append(
-        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n"
+        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n",
     )
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
     items.forEach { item ->

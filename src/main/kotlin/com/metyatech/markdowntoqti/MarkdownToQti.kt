@@ -219,7 +219,7 @@ private fun parseMarkdownQuestion(
                 throw schemaError(
                     "## Options is only allowed for type 'choice'",
                     sourcePath,
-                    optionsSection.headingLine
+                    optionsSection.headingLine,
                 )
             }
             emptyList()
@@ -260,7 +260,7 @@ internal fun parseScoringSection(
             throw schemaError(
                 "Scoring must be a single flat list (no indentation)",
                 sourcePath,
-                section.startLine + index
+                section.startLine + index,
             )
         }
         if (!rawLine.startsWith("- ")) {
@@ -315,7 +315,7 @@ private fun validateSectionOrder(
             throw schemaError(
                 "## Explanation must appear after ## Options",
                 sourcePath,
-                sections[explanationIndex].headingLine
+                sections[explanationIndex].headingLine,
             )
         }
         val scoringIndex = sections.indexOfFirst { it.name == "Scoring" }
@@ -328,7 +328,7 @@ private fun validateSectionOrder(
             throw schemaError(
                 "## Explanation must appear after ## Prompt",
                 sourcePath,
-                sections[explanationIndex].headingLine
+                sections[explanationIndex].headingLine,
             )
         }
         val scoringIndex = sections.indexOfFirst { it.name == "Scoring" }
@@ -524,7 +524,7 @@ private class QtiBuilder(
             return
         }
         builder.append(
-            "  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n"
+            "  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n",
         )
     }
 
@@ -585,7 +585,7 @@ private class QtiBuilder(
             return
         }
         builder.append(
-            "  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" identifier=\"EXPLANATION\" show-hide=\"show\">\n"
+            "  <qti-modal-feedback outcome-identifier=\"FEEDBACK\" identifier=\"EXPLANATION\" show-hide=\"show\">\n",
         )
         builder.append("    <qti-content-body>\n")
         appendXml(builder, explanation.xml)
