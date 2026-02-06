@@ -6,6 +6,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilerExecutionStrategy
 plugins {
     kotlin("jvm") version "2.1.0"
     application
+    id("com.diffplug.spotless") version "7.0.2"
+    id("io.gitlab.arturbosch.detekt") version "1.23.7"
 }
 
 val currentJava = Runtime.version().feature()
@@ -32,6 +34,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.7")
 }
 
 tasks.test {
@@ -48,4 +51,25 @@ tasks.withType<KotlinCompile>().configureEach {
 
 tasks.withType<CompileUsingKotlinDaemon>().configureEach {
     compilerExecutionStrategy.set(KotlinCompilerExecutionStrategy.OUT_OF_PROCESS)
+}
+
+spotless {
+    lineEndings = com.diffplug.spotless.LineEnding.UNIX
+    kotlin {
+        ktlint()
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint()
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(files("$projectDir/config/detekt/detekt.yml"))
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    jvmTarget = "21"
 }

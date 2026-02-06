@@ -1,18 +1,18 @@
 package com.metyatech.markdowntoqti
 
+import org.xml.sax.InputSource
 import java.io.PrintStream
+import java.io.StringReader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.system.exitProcess
-import javax.xml.parsers.DocumentBuilderFactory
-import org.xml.sax.InputSource
-import java.io.StringReader
 
 fun main(args: Array<String>) {
     exitProcess(runCli(args))
@@ -53,7 +53,9 @@ fun runCli(
                     output.println("Wrote: ${outputFile.toAbsolutePath()}")
                 }
             }
-        } catch (exception: Exception) {
+        } catch (
+            @Suppress("TooGenericExceptionCaught") exception: Exception,
+        ) {
             val message = exception.message?.takeIf { it.isNotBlank() } ?: exception.javaClass.simpleName
             error.println("Error in ${inputPath.toAbsolutePath()}: $message")
             return 1
@@ -80,7 +82,10 @@ private data class AssessmentItemRef(
     val href: String,
 )
 
-private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
+private fun parseArgs(
+    args: Array<String>,
+    error: PrintStream,
+): CliOptions? {
     if (args.isEmpty()) {
         printUsage(error)
         return null
@@ -96,20 +101,22 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
     while (index < args.size) {
         when (val arg = args[index]) {
             "--input" -> {
-                val value = args.getOrNull(index + 1)
-                    ?: run {
-                        error.println("Missing value for --input")
-                        return null
-                    }
+                val value =
+                    args.getOrNull(index + 1)
+                        ?: run {
+                            error.println("Missing value for --input")
+                            return null
+                        }
                 inputPaths.add(Path.of(value))
                 index += 2
             }
             "--output-dir" -> {
-                val value = args.getOrNull(index + 1)
-                    ?: run {
-                        error.println("Missing value for --output-dir")
-                        return null
-                    }
+                val value =
+                    args.getOrNull(index + 1)
+                        ?: run {
+                            error.println("Missing value for --output-dir")
+                            return null
+                        }
                 outputDir = Path.of(value)
                 index += 2
             }
@@ -118,11 +125,12 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
                 index += 1
             }
             "--test-title" -> {
-                val value = args.getOrNull(index + 1)
-                    ?: run {
-                        error.println("Missing value for --test-title")
-                        return null
-                    }
+                val value =
+                    args.getOrNull(index + 1)
+                        ?: run {
+                            error.println("Missing value for --test-title")
+                            return null
+                        }
                 testTitle = value
                 index += 2
             }
@@ -160,7 +168,10 @@ private fun parseArgs(args: Array<String>, error: PrintStream): CliOptions? {
     )
 }
 
-private fun resolveInputs(paths: List<Path>, error: PrintStream): List<Path>? {
+private fun resolveInputs(
+    paths: List<Path>,
+    error: PrintStream,
+): List<Path>? {
     val resolved = mutableListOf<Path>()
     paths.forEach { path ->
         if (!Files.exists(path)) {
@@ -187,9 +198,10 @@ private fun resolveInputs(paths: List<Path>, error: PrintStream): List<Path>? {
 }
 
 private fun validateXml(xml: String) {
-    val factory = DocumentBuilderFactory.newInstance().apply {
-        isNamespaceAware = true
-    }
+    val factory =
+        DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = true
+        }
     val builder = factory.newDocumentBuilder()
     builder.parse(InputSource(StringReader(xml)))
 }
@@ -203,7 +215,10 @@ private fun Path.fileNameWithoutExtension(): String {
     }
 }
 
-private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
+private fun copyLocalImages(
+    images: List<LocalImage>,
+    outputDir: Path,
+) {
     images.forEach { image ->
         val destination = outputDir.resolve(image.outputRelativePath)
         destination.parent?.let { Files.createDirectories(it) }
@@ -212,7 +227,10 @@ private fun copyLocalImages(images: List<LocalImage>, outputDir: Path) {
 }
 
 private fun printUsage(error: PrintStream) {
-    error.println("Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]")
+    error.println(
+        "Usage: markdown-to-qti --input <path> [--input <path> ...] " +
+            "--test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]",
+    )
     error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
 }
 
@@ -249,7 +267,10 @@ private fun writeAssessmentTests(
     }
 }
 
-private fun buildAssessmentTest(items: List<AssessmentItemRef>, testTitle: String): String {
+private fun buildAssessmentTest(
+    items: List<AssessmentItemRef>,
+    testTitle: String,
+): String {
     val builder = StringBuilder()
     builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
     builder.append(
@@ -258,7 +279,9 @@ private fun buildAssessmentTest(items: List<AssessmentItemRef>, testTitle: Strin
             "    identifier=\"assessment-test\"\n" +
             "    title=\"${escapeXml(testTitle)}\">\n",
     )
-    builder.append("  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n")
+    builder.append(
+        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n",
+    )
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
     items.forEach { item ->
         builder.append("      <qti-assessment-item-ref identifier=\"")
