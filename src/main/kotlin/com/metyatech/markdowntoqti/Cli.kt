@@ -14,6 +14,8 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.system.exitProcess
 
+const val VERSION = "0.1.0"
+
 fun main(args: Array<String>) {
     exitProcess(runCli(args))
 }
@@ -27,43 +29,61 @@ fun runCli(
     val inputs = resolveInputs(parsed.inputPaths, error) ?: return 1
 
     val outputDir = parsed.outputDir
-    if (outputDir != null) {
+    if (outputDir != null && !parsed.validateOnly) {
         Files.createDirectories(outputDir)
     }
     val assessmentItemsByOutputDir = mutableMapOf<Path, MutableList<AssessmentItemRef>>()
+    val generatedFiles = mutableListOf<String>()
 
-    for (inputPath in inputs) {
-        try {
-            val markdown = inputPath.readText()
-            val identifier = inputPath.fileNameWithoutExtension()
-            val conversion = convertMarkdownToQtiWithAssets(markdown, identifier, inputPath)
-            if (parsed.validateOnly) {
-                validateXml(conversion.qtiXml)
-                if (parsed.verbose) {
-                    output.println("Validated: ${inputPath.toAbsolutePath()}")
-                }
-            } else {
-                val resolvedOutputDir = (outputDir ?: defaultOutputDirFor(inputPath)).normalize()
-                Files.createDirectories(resolvedOutputDir)
-                val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
-                outputFile.writeText(conversion.qtiXml)
-                copyLocalImages(conversion.localImages, resolvedOutputDir)
-                registerAssessmentItem(assessmentItemsByOutputDir, resolvedOutputDir, identifier)
-                if (parsed.verbose) {
-                    output.println("Wrote: ${outputFile.toAbsolutePath()}")
-                }
+    inputs.forEach { inputSource ->
+        val markdown = inputSource.readText()
+        val identifier = inputSource.identifier
+        val sourcePath = inputSource.path ?: Path.of(".").toAbsolutePath()
+        val conversion = convertMarkdownToQtiWithAssets(markdown, identifier, sourcePath)
+        if (parsed.validateOnly) {
+            validateXml(conversion.qtiXml)
+            if (parsed.verbose) {
+                output.println("Validated: ${inputSource.displayName}")
             }
-        } catch (
-            @Suppress("TooGenericExceptionCaught") exception: Exception,
-        ) {
-            val message = exception.message?.takeIf { it.isNotBlank() } ?: exception.javaClass.simpleName
-            error.println("Error in ${inputPath.toAbsolutePath()}: $message")
-            return 1
+        } else {
+            val resolvedOutputDir = (outputDir ?: defaultOutputDirFor(sourcePath)).normalize()
+            Files.createDirectories(resolvedOutputDir)
+            val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
+            outputFile.writeText(conversion.qtiXml)
+            generatedFiles.add(outputFile.toAbsolutePath().toString())
+            copyLocalImages(conversion.localImages, resolvedOutputDir).forEach {
+                generatedFiles.add(it.toAbsolutePath().toString())
+            }
+            registerAssessmentItem(assessmentItemsByOutputDir, resolvedOutputDir, identifier)
+            if (parsed.verbose) {
+                output.println("Wrote: ${outputFile.toAbsolutePath()}")
+            }
         }
     }
 
     if (!parsed.validateOnly) {
-        writeAssessmentTests(assessmentItemsByOutputDir, parsed.testTitle, output, parsed.verbose)
+        writeAssessmentTests(assessmentItemsByOutputDir, parsed.testTitle, output, parsed.verbose).forEach {
+            generatedFiles.add(it.toAbsolutePath().toString())
+        }
+    }
+
+    if (parsed.json) {
+        val json =
+            buildString {
+                append("{\n")
+                append("  \"version\": \"$VERSION\",\n")
+                append("  \"generatedFiles\": [\n")
+                generatedFiles.forEachIndexed { index, file ->
+                    append("    \"")
+                    append(file.replace("\\", "\\\\").replace("\"", "\\\""))
+                    append("\"")
+                    if (index < generatedFiles.size - 1) append(",")
+                    append("\n")
+                }
+                append("  ]\n")
+                append("}")
+            }
+        output.println(json)
     }
 
     return 0
@@ -75,6 +95,7 @@ private data class CliOptions(
     val validateOnly: Boolean,
     val verbose: Boolean,
     val testTitle: String,
+    val json: Boolean,
 )
 
 private data class AssessmentItemRef(
@@ -96,6 +117,7 @@ private fun parseArgs(
     var validateOnly = false
     var verbose = false
     var testTitle: String? = null
+    var json = false
 
     var index = 0
     while (index < args.size) {
@@ -120,7 +142,7 @@ private fun parseArgs(
                 outputDir = Path.of(value)
                 index += 2
             }
-            "--validate-only" -> {
+            "--validate-only", "--dry-run" -> {
                 validateOnly = true
                 index += 1
             }
@@ -137,6 +159,14 @@ private fun parseArgs(
             "--verbose" -> {
                 verbose = true
                 index += 1
+            }
+            "--json" -> {
+                json = true
+                index += 1
+            }
+            "--version", "-V" -> {
+                error.println("markdown-to-qti version $VERSION")
+                return null
             }
             "--help", "-h" -> {
                 printUsage(error)
@@ -165,15 +195,34 @@ private fun parseArgs(
         validateOnly = validateOnly,
         verbose = verbose,
         testTitle = testTitle,
+        json = json,
     )
 }
+
+private data class ConversionInputSource(
+    val identifier: String,
+    val displayName: String,
+    val path: Path?, // null for stdin
+    val readText: () -> String,
+)
 
 private fun resolveInputs(
     paths: List<Path>,
     error: PrintStream,
-): List<Path>? {
-    val resolved = mutableListOf<Path>()
+): List<ConversionInputSource>? {
+    val resolved = mutableListOf<ConversionInputSource>()
     paths.forEach { path ->
+        if (path.toString() == "-") {
+            resolved.add(
+                ConversionInputSource(
+                    identifier = "stdin",
+                    displayName = "stdin",
+                    path = null,
+                    readText = { System.`in`.bufferedReader().readText() },
+                ),
+            )
+            return@forEach
+        }
         if (!Files.exists(path)) {
             error.println("Input not found: ${path.toAbsolutePath()}")
             return null
@@ -182,10 +231,26 @@ private fun resolveInputs(
             Files.list(path).use { stream ->
                 stream
                     .filter { Files.isRegularFile(it) && it.extension.equals("md", ignoreCase = true) }
-                    .forEach { resolved.add(it) }
+                    .forEach {
+                        resolved.add(
+                            ConversionInputSource(
+                                identifier = it.fileNameWithoutExtension(),
+                                displayName = it.toAbsolutePath().toString(),
+                                path = it,
+                                readText = { it.readText() },
+                            ),
+                        )
+                    }
             }
         } else {
-            resolved.add(path)
+            resolved.add(
+                ConversionInputSource(
+                    identifier = path.fileNameWithoutExtension(),
+                    displayName = path.toAbsolutePath().toString(),
+                    path = path,
+                    readText = { path.readText() },
+                ),
+            )
         }
     }
 
@@ -218,20 +283,31 @@ private fun Path.fileNameWithoutExtension(): String {
 private fun copyLocalImages(
     images: List<LocalImage>,
     outputDir: Path,
-) {
+): List<Path> {
+    val copied = mutableListOf<Path>()
     images.forEach { image ->
         val destination = outputDir.resolve(image.outputRelativePath)
         destination.parent?.let { Files.createDirectories(it) }
         Files.copy(image.sourcePath, destination, StandardCopyOption.REPLACE_EXISTING)
+        copied.add(destination)
     }
+    return copied
 }
 
 private fun printUsage(error: PrintStream) {
     error.println(
-        "Usage: markdown-to-qti --input <path> [--input <path> ...] " +
-            "--test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]",
+        "Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title> [--output-dir <dir>] [--validate-only] [--dry-run] [--verbose] [--version] [--json]",
     )
-    error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
+    error.println("Options:")
+    error.println("  --input <path>      Markdown file or directory (directories scan for *.md). Use '-' for stdin.")
+    error.println("  --test-title <title> Assessment test title (required).")
+    error.println("  --output-dir <dir>  Output directory for .qti.xml files. Defaults to qti-out under each input file directory.")
+    error.println("  --validate-only     Parse and validate XML without writing files.")
+    error.println("  --dry-run           Alias for --validate-only.")
+    error.println("  --verbose           Log processed files.")
+    error.println("  --json              Output machine-readable JSON summary to stdout.")
+    error.println("  --version, -V       Show version.")
+    error.println("  --help, -h          Show help.")
 }
 
 private fun defaultOutputDirFor(inputPath: Path): Path {
@@ -253,7 +329,8 @@ private fun writeAssessmentTests(
     testTitle: String,
     output: PrintStream,
     verbose: Boolean,
-) {
+): List<Path> {
+    val written = mutableListOf<Path>()
     assessmentItemsByOutputDir.forEach { (outputDir, items) ->
         if (items.isEmpty()) {
             return@forEach
@@ -261,10 +338,12 @@ private fun writeAssessmentTests(
         val xml = buildAssessmentTest(items, testTitle)
         val testFile = outputDir.resolve("assessment-test.qti.xml")
         testFile.writeText(xml)
+        written.add(testFile)
         if (verbose) {
             output.println("Wrote: ${testFile.toAbsolutePath()}")
         }
     }
+    return written
 }
 
 private fun buildAssessmentTest(
@@ -279,9 +358,7 @@ private fun buildAssessmentTest(
             "    identifier=\"assessment-test\"\n" +
             "    title=\"${escapeXml(testTitle)}\">\n",
     )
-    builder.append(
-        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n",
-    )
+    builder.append("  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n")
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
     items.forEach { item ->
         builder.append("      <qti-assessment-item-ref identifier=\"")
