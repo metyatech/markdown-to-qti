@@ -1,7 +1,6 @@
 {
   "source": "github:metyatech/agent-rules",
   "domains": [
-    "cli",
     "exam"
   ],
   "extra": [
