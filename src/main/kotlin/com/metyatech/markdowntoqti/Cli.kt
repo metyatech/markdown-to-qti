@@ -296,12 +296,16 @@ private fun copyLocalImages(
 
 private fun printUsage(error: PrintStream) {
     error.println(
-        "Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title> [--output-dir <dir>] [--validate-only] [--dry-run] [--verbose] [--version] [--json]",
+        "Usage: markdown-to-qti --input <path> [--input <path> ...] --test-title <title>" +
+            " [--output-dir <dir>] [--validate-only] [--dry-run] [--verbose] [--version] [--json]",
     )
     error.println("Options:")
     error.println("  --input <path>      Markdown file or directory (directories scan for *.md). Use '-' for stdin.")
     error.println("  --test-title <title> Assessment test title (required).")
-    error.println("  --output-dir <dir>  Output directory for .qti.xml files. Defaults to qti-out under each input file directory.")
+    error.println(
+        "  --output-dir <dir>  Output directory for .qti.xml files." +
+            " Defaults to qti-out under each input file directory.",
+    )
     error.println("  --validate-only     Parse and validate XML without writing files.")
     error.println("  --dry-run           Alias for --validate-only.")
     error.println("  --verbose           Log processed files.")
@@ -358,7 +362,10 @@ private fun buildAssessmentTest(
             "    identifier=\"assessment-test\"\n" +
             "    title=\"${escapeXml(testTitle)}\">\n",
     )
-    builder.append("  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n")
+    builder.append(
+        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">
+",
+    )
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
     items.forEach { item ->
         builder.append("      <qti-assessment-item-ref identifier=\"")
