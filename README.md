@@ -19,10 +19,11 @@ If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 in
 
 ## Development Commands
 
-- Build: `.\tools\gradle-java23.ps1 build`
-- Test: `.\tools\gradle-java23.ps1 test`
-- Lint: `.\tools\gradle-java23.ps1 detekt`
-- Format: `.\tools\gradle-java23.ps1 spotlessApply`
+- Build: `.\\tools\\gradle-java23.ps1 build`
+- Test: `.\\tools\\gradle-java23.ps1 test`
+- Lint: `.\\tools\\gradle-java23.ps1 detekt`
+- Format: `.\\tools\\gradle-java23.ps1 spotlessApply`
+- Format check: `.\\tools\\gradle-java23.ps1 spotlessCheck`
 
 ## CLI Usage
 
@@ -45,18 +46,22 @@ Non-ASCII test titles:
 
 Options:
 
-- `--input <path>`: Markdown file or directory (directories scan for `*.md`).
+- `--input <path>`: Markdown file or directory (directories scan for `*.md`). Use `-` for stdin.
 - `--test-title <title>`: Assessment test title (required).
 - `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
 - `--validate-only`: Parse and validate XML without writing files.
+- `--dry-run`: Alias for `--validate-only`.
 - `--verbose`: Log processed files.
+- `--json`: Output machine-readable JSON summary to stdout.
+- `--version`, `-V`: Show version.
 
 ### CLI Details
 
 - When `--input` is a directory, all `*.md` files inside it are processed.
+- When `--input` is `-`, it reads from stdin. Identifier defaults to `stdin`.
 - Output files are written as `<input-file>.qti.xml` under `--output-dir` or `<input-dir>/qti-out` when omitted.
 - An `assessment-test.qti.xml` file is written alongside outputs, referencing all generated items in that directory.
-- `--validate-only` performs XML well-formedness checks without writing files.
+- `--validate-only` (or `--dry-run`) performs XML well-formedness checks without writing files.
 - Local image files referenced in Markdown are copied to the output directory, preserving
   the relative paths.
 - Errors include the input path when possible and return a non-zero exit code.
@@ -76,5 +81,4 @@ None yet.
 ## Release / Deployment
 
 Not applicable yet.
-
 
