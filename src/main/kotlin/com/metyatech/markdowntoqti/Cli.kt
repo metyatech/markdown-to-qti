@@ -363,8 +363,7 @@ private fun buildAssessmentTest(
             "    title=\"${escapeXml(testTitle)}\">\n",
     )
     builder.append(
-        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">
-",
+        "  <qti-test-part identifier=\"part-1\" navigation-mode=\"linear\" submission-mode=\"individual\">\n",
     )
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
     items.forEach { item ->
