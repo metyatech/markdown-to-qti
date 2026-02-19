@@ -43,6 +43,7 @@ tasks.test {
 
 application {
     mainClass.set("com.metyatech.markdowntoqti.CliKt")
+    applicationDefaultJvmArgs = listOf("-Dfile.encoding=UTF-8")
 }
 
 tasks.withType<KotlinCompile>().configureEach {

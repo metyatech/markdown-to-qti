@@ -49,7 +49,7 @@ fun runCli(
             val resolvedOutputDir = (outputDir ?: defaultOutputDirFor(sourcePath)).normalize()
             Files.createDirectories(resolvedOutputDir)
             val outputFile = resolvedOutputDir.resolve("$identifier.qti.xml")
-            outputFile.writeText(conversion.qtiXml)
+            outputFile.writeText(conversion.qtiXml, Charsets.UTF_8)
             generatedFiles.add(outputFile.toAbsolutePath().toString())
             copyLocalImages(conversion.localImages, resolvedOutputDir).forEach {
                 generatedFiles.add(it.toAbsolutePath().toString())
@@ -237,7 +237,7 @@ private fun resolveInputs(
                                 identifier = it.fileNameWithoutExtension(),
                                 displayName = it.toAbsolutePath().toString(),
                                 path = it,
-                                readText = { it.readText() },
+                                readText = { it.readText(Charsets.UTF_8) },
                             ),
                         )
                     }
@@ -248,7 +248,7 @@ private fun resolveInputs(
                     identifier = path.fileNameWithoutExtension(),
                     displayName = path.toAbsolutePath().toString(),
                     path = path,
-                    readText = { path.readText() },
+                    readText = { path.readText(Charsets.UTF_8) },
                 ),
             )
         }
@@ -341,7 +341,7 @@ private fun writeAssessmentTests(
         }
         val xml = buildAssessmentTest(items, testTitle)
         val testFile = outputDir.resolve("assessment-test.qti.xml")
-        testFile.writeText(xml)
+        testFile.writeText(xml, Charsets.UTF_8)
         written.add(testFile)
         if (verbose) {
             output.println("Wrote: ${testFile.toAbsolutePath()}")
