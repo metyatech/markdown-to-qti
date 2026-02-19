@@ -14,6 +14,8 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.system.exitProcess
 
+private const val VERSION = "0.1.0"
+
 fun main(args: Array<String>) {
     exitProcess(runCli(args))
 }
@@ -23,7 +25,13 @@ fun runCli(
     output: PrintStream = System.out,
     error: PrintStream = System.err,
 ): Int {
-    val parsed = parseArgs(args, error) ?: return 1
+    val parsed =
+        when (val result = parseArgs(args, output, error)) {
+            is CliResult.Options -> result.options
+            is CliResult.HelpOrVersion -> return 0
+            is CliResult.Error -> return 1
+        }
+
     val inputs = resolveInputs(parsed.inputPaths, error) ?: return 1
 
     val outputDir = parsed.outputDir
@@ -77,6 +85,16 @@ private data class CliOptions(
     val testTitle: String,
 )
 
+private sealed class CliResult {
+    data class Options(
+        val options: CliOptions,
+    ) : CliResult()
+
+    object HelpOrVersion : CliResult()
+
+    object Error : CliResult()
+}
+
 private data class AssessmentItemRef(
     val identifier: String,
     val href: String,
@@ -84,11 +102,12 @@ private data class AssessmentItemRef(
 
 private fun parseArgs(
     args: Array<String>,
+    output: PrintStream,
     error: PrintStream,
-): CliOptions? {
+): CliResult {
     if (args.isEmpty()) {
         printUsage(error)
-        return null
+        return CliResult.Error
     }
 
     val inputPaths = mutableListOf<Path>()
@@ -105,7 +124,7 @@ private fun parseArgs(
                     args.getOrNull(index + 1)
                         ?: run {
                             error.println("Missing value for --input")
-                            return null
+                            return CliResult.Error
                         }
                 inputPaths.add(Path.of(value))
                 index += 2
@@ -115,7 +134,7 @@ private fun parseArgs(
                     args.getOrNull(index + 1)
                         ?: run {
                             error.println("Missing value for --output-dir")
-                            return null
+                            return CliResult.Error
                         }
                 outputDir = Path.of(value)
                 index += 2
@@ -129,7 +148,7 @@ private fun parseArgs(
                     args.getOrNull(index + 1)
                         ?: run {
                             error.println("Missing value for --test-title")
-                            return null
+                            return CliResult.Error
                         }
                 testTitle = value
                 index += 2
@@ -138,33 +157,39 @@ private fun parseArgs(
                 verbose = true
                 index += 1
             }
+            "--version", "-V" -> {
+                output.println("markdown-to-qti version $VERSION")
+                return CliResult.HelpOrVersion
+            }
             "--help", "-h" -> {
-                printUsage(error)
-                return null
+                printUsage(output)
+                return CliResult.HelpOrVersion
             }
             else -> {
                 error.println("Unknown argument: $arg")
                 printUsage(error)
-                return null
+                return CliResult.Error
             }
         }
     }
 
     if (inputPaths.isEmpty()) {
         error.println("At least one --input is required.")
-        return null
+        return CliResult.Error
     }
     if (testTitle.isNullOrBlank()) {
         error.println("--test-title is required.")
-        return null
+        return CliResult.Error
     }
 
-    return CliOptions(
-        inputPaths = inputPaths,
-        outputDir = outputDir,
-        validateOnly = validateOnly,
-        verbose = verbose,
-        testTitle = testTitle,
+    return CliResult.Options(
+        CliOptions(
+            inputPaths = inputPaths,
+            outputDir = outputDir,
+            validateOnly = validateOnly,
+            verbose = verbose,
+            testTitle = testTitle,
+        ),
     )
 }
 
@@ -226,12 +251,12 @@ private fun copyLocalImages(
     }
 }
 
-private fun printUsage(error: PrintStream) {
-    error.println(
+private fun printUsage(stream: PrintStream) {
+    stream.println(
         "Usage: markdown-to-qti --input <path> [--input <path> ...] " +
-            "--test-title <title> [--output-dir <dir>] [--validate-only] [--verbose]",
+            "--test-title <title> [--output-dir <dir>] [--validate-only] [--verbose] [--version] [--help]",
     )
-    error.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
+    stream.println("When --output-dir is omitted, output is written to <input-directory>/qti-out.")
 }
 
 private fun defaultOutputDirFor(inputPath: Path): Path {

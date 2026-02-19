@@ -325,6 +325,17 @@ class CliTest {
         val actualXml = assessmentTest.readText()
         assertEquals(normalizeXml(expectedAssessment), normalizeXml(actualXml))
     }
+
+    @Test
+    fun cli_printsVersion() {
+        val outputStream = java.io.ByteArrayOutputStream()
+        val printStream = java.io.PrintStream(outputStream)
+        val exitCode = runCli(arrayOf("--version"), output = printStream)
+
+        assertEquals(0, exitCode)
+        val output = outputStream.toString().trim()
+        assertTrue(output.contains("markdown-to-qti version"))
+    }
 }
 
 private fun readFixtureText(name: String): String {
