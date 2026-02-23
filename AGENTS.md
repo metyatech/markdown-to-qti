@@ -1,6 +1,7 @@
 <!-- markdownlint-disable MD025 -->
 # Tool Rules (compose-agentsmd)
-- Before starting any work, run `compose-agentsmd` from the project root.
+
+- **Session gate**: before responding to ANY user message, run `compose-agentsmd` from the project root. AGENTS.md contains the rules you operate under; stale rules cause rule violations. If you discover you skipped this step mid-session, stop, run it immediately, re-read the diff, and adjust your behavior before continuing.
 - `compose-agentsmd` intentionally regenerates `AGENTS.md`; any resulting `AGENTS.md` diff is expected and must not be treated as an unexpected external change.
 - If `compose-agentsmd` is not available, install it via npm: `npm install -g compose-agentsmd`.
 - To update shared/global rules, use `compose-agentsmd edit-rules` to locate the writable rules workspace, make changes only in that workspace, then run `compose-agentsmd apply-rules` (do not manually clone or edit the rules source repo outside this workflow).
@@ -20,6 +21,7 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/agent-rules-composition.m
 - AGENTS.md is self-contained; do not rely on parent/child AGENTS for inheritance or precedence.
 - Maintain shared rules centrally and compose per project; use project-local rules only for truly local policies.
 - Place AGENTS.md at the project root; only add another AGENTS.md for nested independent projects.
+- Before doing any work in a repository that contains `agent-ruleset.json`, run `compose-agentsmd` in that repository to refresh its AGENTS.md and ensure rules are current.
 
 ## Update policy
 
@@ -27,16 +29,17 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/agent-rules-composition.m
 - A request to "update rules" means: update the appropriate rule module and ruleset, then regenerate AGENTS.md.
 - If the user gives a persistent instruction (e.g., "always", "must"), encode it in the appropriate module (global vs local).
 - When acknowledging a new persistent instruction, update the rule module in the same change set and regenerate AGENTS.md.
-- When creating a new repository, set up rule files (e.g., agent-ruleset.json and any local rules) so compose-agentsmd can run.
+- When creating a new repository, verify that it meets all applicable global rules before reporting completion: rule files and AGENTS.md, CI workflow, linting/formatting, community health files, documentation, and dependency scanning. Do not treat repository creation as complete until full compliance is verified.
 - When updating rules, infer the core intent; if it is a global policy, record it in global rules rather than project-local rules.
 - If a task requires domain rules not listed in agent-ruleset.json, update the ruleset to include them and regenerate AGENTS.md before proceeding.
-- When rule changes produce a diff, include it in the final response unless the user explicitly asks to omit it.
+- Do not include composed `AGENTS.md` diffs in the final response unless the user explicitly asks for them.
 
 ## Editing standards
 
 - Keep rules MECE, concise, and non-redundant.
 - Use short, action-oriented bullets; avoid numbered lists unless order matters.
 - Prefer the most general applicable rule to avoid duplication.
+- Write rules as clear directives that prescribe specific behavior ("do X", "always Y", "never Z"). Do not use hedging language ("may", "might", "could", "consider") — if a behavior is required, state it as a requirement; if it is not required, omit it.
 - Do not use numeric filename prefixes (e.g., `00-...`) to impose ordering; treat rule modules as a flat set. If ordering matters, encode it explicitly in composition/tooling rather than filenames.
 
 ## Rule placement (global vs domain)
@@ -45,6 +48,17 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/agent-rules-composition.m
 - If the rule could be needed from any workspace or repository, make it global.
 - Only use domain rules when the rule is strictly relevant inside repositories that opt in to that domain.
 - Before choosing domain, verify: "Will this rule ever be needed when working from a workspace that does not include this domain?" If yes, make it global.
+
+## Rules vs skills
+
+Rules and skills serve different purposes. Choose the right mechanism based on what happens when the guidance is absent.
+
+- **Global rules**: Invariants and constraints that must always hold. Violation causes breakage, incorrect behavior, or safety issues. Always loaded into context, so keep them concise. Examples: approval gates, quality standards, coding constraints, identity policies.
+- **Domain rules**: Ecosystem-specific standards needed only in repositories that opt in. Violation causes quality degradation within that ecosystem. Examples: Node ESM conventions, npm package publishing standards.
+- **Skills**: Procedures, checklists, and workflows loaded on demand. Missing a skill causes inefficiency or inconsistency, but nothing breaks. Skills may be detailed and lengthy because they are only loaded when triggered. Examples: release workflow, CLI design checklist, per-language toolchain setup, PR review procedure.
+- **Local rules**: Repository-specific overrides or exceptions to global/domain rules.
+
+When a rule file grows with procedural/checklist content, extract the procedures into a skill and keep only the invariant constraints in the rule.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/autonomous-operations.md
 
@@ -56,10 +70,18 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/autonomous-operations.md
 - Assume end-to-end autonomy for repository operations (issue triage, PRs, direct pushes to main/master, merges, releases, repo admin) only within repositories under the user's control (e.g., owned by metyatech or where the user has explicit maintainer/push authority), unless the user restricts scope; for third-party repos, require explicit user request before any of these operations.
 - Do not preserve backward compatibility unless explicitly requested; avoid legacy aliases and compatibility shims by default.
 - When work reveals rule gaps, redundancy, or misplacement, proactively update rule modules/rulesets (including moves/renames) and regenerate AGENTS.md without waiting for explicit user requests.
-- After each task, briefly assess whether avoidable mistakes occurred. In direct mode, propose rule updates if warranted. In delegated mode, include improvement suggestions in the task result.
-- If you state a persistent workflow change (e.g., `from now on`, `I'll always`), immediately propose the corresponding rule update and request approval in the same task; do not leave it as an unrecorded promise. When operating under a multi-agent-delegation model, follow that rule module's guidance on restricted operations before proposing changes.
+- Continuously evaluate your own behavior, rules, and skills during operation. When you identify a gap, ambiguity, inefficiency, or missing guidance — whether through self-observation, task friction, or comparison with ideal behavior — update the appropriate rule or skill immediately without waiting for the user to notice or point out the issue. After each task, assess whether avoidable mistakes occurred and apply corrections in the same task. In delegated mode, include improvement suggestions in the task result.
+- When the user points out a behavior failure, treat it as a systemic gap: fix the immediate issue, update rules to prevent recurrence, and identify whether the same gap pattern applies elsewhere — all in a single action. Do not wait for the user to enumerate each corrective step; a single observation implies all necessary corrections.
+- If you state a persistent workflow change (e.g., `from now on`, `I'll always`), immediately propose the corresponding rule update and request approval in the same task; do not leave it as an unrecorded promise. This is a blocking gate: do not proceed to the next task or close the response until the rule update is committed or explicitly deferred by the requester. When operating under a multi-agent-delegation model, follow that rule module's guidance on restricted operations before proposing changes.
 - Because session memory resets between tasks, treat rule files as persistent memory; when any issue or avoidable mistake occurs, update rules in the same task to prevent recurrence.
+- Never apply rules from memory of previous sessions; always reference the current AGENTS.md. If unsure whether a rule still applies, re-read it.
 - Treat these rules as the source of truth; do not override them with repository conventions. If a repo conflicts, update the repo to comply or update the rules to encode the exception; do not make undocumented exceptions.
+
+## Skill role persistence
+
+- When the `manager` skill is invoked in a session, treat its role as session-scoped and continue operating as a manager/orchestrator for the remainder of the session.
+- Do not revert to a direct-implementation posture mid-session unless the user explicitly asks to stop using the manager role/skill or selects a different role.
+
 - When something is unclear, investigate to resolve it; do not proceed with unresolved material uncertainty. If still unclear, ask and include what you checked.
 - Do not proceed based on assumptions or guesses without explicit user approval; hypotheses may be discussed but must not drive action.
 - Make decisions explicit when they affect scope, risk, cost, or irreversibility.
@@ -70,15 +92,7 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/cli-standards.md
 
 # CLI standards
 
-- Provide --help/-h with clear usage, options, and examples; include required parameters in examples.
-- Provide --version (use -V); reserve -v for --verbose.
-- Support stdin/stdout piping; allow output redirection (e.g., --output for file creation).
-- Offer machine-readable output (e.g., --json) when emitting structured data.
-- For modifying/deleting actions, provide --dry-run and an explicit bypass (--yes/--force).
-- Provide controllable logging (--quiet, --verbose, or --trace).
-- Use deterministic exit codes (0 success, non-zero failure) and avoid silent fallbacks.
-- For JSON configuration, define/update a JSON Schema and validate config on load.
-- For interactive CLI prompts, provide required context before asking; for yes/no prompts, Enter means "Yes" and "n" means "No".
+- When building a CLI, follow standard conventions: --help/-h, --version/-V, stdin/stdout piping, --json output, --dry-run for mutations, deterministic exit codes, and JSON Schema config validation.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/command-execution.md
 
@@ -88,22 +102,10 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/command-execution.md
 - Prefer repository-standard scripts/commands (package.json scripts, README instructions).
 - Reproduce reported command issues by running the same command (or closest equivalent) before proposing fixes.
 - Avoid interactive git prompts by using --no-edit or setting GIT_EDITOR=true.
-- If elevated privileges are required, use sudo where available; otherwise run as Administrator.
+- If elevated privileges are required, use sudo directly; do not launch a separate elevated shell (e.g., Start-Process -Verb RunAs). Fall back to run as Administrator only when sudo is unavailable.
 - Keep changes scoped to affected repositories; when shared modules change, update consumers and verify at least one.
 - If no branch is specified, work on the current branch; direct commits to main/master are allowed.
-- After addressing PR review feedback, resolve the corresponding review thread(s) before concluding; if you lack permission, state it explicitly.
-- Before re-requesting review after addressing feedback, run the relevant verification suite and summarize results (commands + outcomes) in the PR comment/description.
-- After pushing fixes for PR review feedback, re-request review only from reviewer(s) who posted the addressed feedback in the current round.
-- Do not re-request review from reviewers (including AI reviewers) who did not post addressed feedback, or who already indicated no actionable issues.
-- If no applicable reviewer remains, ask who should review next.
-- When Codex and/or Copilot review bots are configured for the repo, trigger re-review only for the bot(s) that posted addressed feedback.
-- For Codex re-review (only when applicable): comment `@codex review` on the PR.
-- For Copilot re-review (only when applicable): use `gh api` to remove+re-request the bot reviewer `copilot-pull-request-reviewer[bot]` (do not rely on `gh pr edit --add-reviewer Copilot`).
-  - Remove: `gh api --method DELETE /repos/{owner}/{repo}/pulls/{pr}/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]"`
-  - Add: `gh api --method POST /repos/{owner}/{repo}/pulls/{pr}/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]"`
-- After completing a PR, merge it, sync the target branch, and delete the PR branch locally and remotely.
-- Agent platforms have different execution capabilities (sandboxing, network access, push permissions). Do not assume capabilities beyond what the current platform provides; fail explicitly when a required capability is unavailable.
-- When handling GitHub notifications, use `DELETE /notifications/threads/{id}` (HTTP 204) to mark them as **done** (removes from inbox/moves to Done tab). Do NOT use `PATCH /notifications/threads/{id}` (marks as read but leaves in inbox). After processing notifications, bulk-delete any remaining read-but-not-done notifications with the same DELETE API.
+- Do not assume agent platform capabilities beyond what is available; fail explicitly when unavailable.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/delivery-hard-gates.md
 
@@ -160,7 +162,7 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/implementation-and-coding
 - When selecting a UI framework, prioritize built-in component quality and default aesthetics over raw flexibility; the goal is a standard, modern-looking UI with minimal custom styling code.
 - Keep everything DRY across code, specs, docs, tests, configs, and scripts; proactively refactor repeated procedures into shared configs/scripts with small, local overrides.
 - Persist durable runtime/domain data in a database with a fully normalized schema (3NF/BCNF target): store each fact once with keys/constraints, and compute derived statuses/views at read time instead of duplicating them.
-- Fix root causes; remove obsolete/unused code, branches, comments, and helpers.
+- Fix root causes; remove obsolete/unused code, branches, comments, and helpers. When a tool, dependency, or service under user control malfunctions, investigate and fix the source rather than building workarounds. User-owned repositories are fixable code, not external constraints.
 - Avoid leaving half-created state on failure paths. Any code that allocates/registers/starts resources must have a shared teardown that runs on all failure and cancellation paths.
 - Do not block inside async APIs or async-looking code paths; avoid synchronous I/O and synchronous process execution where responsiveness is expected.
 - Avoid external command execution (PATH-dependent tools, stringly-typed argument concatenation). Prefer native libraries/SDKs. If unavoidable: use absolute paths, safe argument handling, and strict input validation.
@@ -170,121 +172,125 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/implementation-and-coding
 - Align file/folder names with their contents and keep naming conventions consistent.
 - Do not assume machine-specific environments (fixed workspace directories, drive letters, per-PC paths). Prefer repo-relative paths and explicit configuration so workflows work in arbitrary clone locations.
 - Temporary files/directories created by the agent MUST be placed only under the OS temp directory (e.g., `%TEMP%` / `$env:TEMP`). Do not create ad-hoc temp folders in repos/workspaces unless the requester explicitly approves.
+- When building tools, CLIs, or services intended for agent use, design for cross-agent compatibility. Do not rely on features specific to a single agent platform (Claude Code, Codex, Gemini CLI, Copilot). Use standard interfaces (CLI, HTTP, stdin/stdout, MCP) that any agent can invoke.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/linting-formatting-and-static-analysis.md
 
 # Linters, formatters, and static analysis
 
-## General policy
-
 - Every code repo must have a formatter and a linter/static analyzer for its primary languages.
-- Prefer one formatter and one linter per language; avoid overlapping tools that fight each other.
-- Follow the standard toolchains below. If a repo conflicts, migrate it to comply unless the user explicitly restricts scope.
-- If you believe an exception is needed, encode it as a rule update and regenerate AGENTS.md before proceeding.
+- Prefer one formatter and one linter per language; avoid overlapping tools.
 - Enforce in CI: run formatting checks (verify-no-changes) and linting on pull requests and require them for merges.
-- Treat warnings as errors in CI; when a tool cannot, use its strictest available setting so warnings fail CI.
+- Treat warnings as errors in CI.
 - Do not disable rules globally; keep suppressions narrow, justified, and time-bounded.
 - Pin tool versions (lockfiles/manifests) for reproducible CI.
+- For web UI projects, enforce automated visual accessibility checks in CI.
+- Require dependency vulnerability scanning, secret scanning, and CodeQL for supported languages.
 
-## Design and visual accessibility automation
+Source: github:metyatech/agent-rules@HEAD/rules/global/model-inventory.md
 
-- Apply this section to projects with web UI components only.
-- For any design/UI styling change in any project, enforce automated visual accessibility checks as part of the repo-standard `verify` command and CI.
-- Do not rely on per-page/manual test maintenance; use route discovery (for example sitemap, generated route lists, or framework route manifests) so newly added pages are automatically included.
-- Validate both light and dark themes when theme switching is supported.
-- Validate at least default, hover, and focus states for interactive elements.
-- Enforce non-text boundary contrast checks across all visible UI elements that present boundaries (including interactive controls and container-like elements), not only predefined component classes.
-- Do not hardcode a narrow selector allowlist for boundary checks; use broad DOM discovery with only minimal technical exclusions (for example hidden/zero-size/non-rendered nodes).
-- Fail CI on violations; do not silently ignore design regressions.
-- If temporary exclusions are unavoidable, keep them narrowly scoped, documented with rationale, and remove them promptly.
+# Model inventory and routing
 
-## Security baseline
+Update this table when models change. **Last reviewed: 2026-02-22.**
 
-- Require dependency vulnerability scanning appropriate to the ecosystem (SCA) for merges. If you cannot enable it, report the limitation and get explicit user approval before proceeding without it.
-- Enable GitHub secret scanning and remediate findings; never commit secrets. If it is unavailable, add a repo-local secret scanner and require it for merges.
-- Enable CodeQL code scanning for supported languages. If it cannot be enabled, report the limitation and use the best available alternative for that ecosystem.
+## Tier definitions
 
-## Default toolchain by language
+- **Free** — Trivial lookups, simple Q&A, straightforward single-file edits. Copilot only.
+- **Light** — Mechanical transforms, formatting, simple implementations, quick clarifications.
+- **Standard** — General implementation, code review, multi-file changes, most development work.
+- **Heavy** — Architecture decisions, safety-critical code, complex multi-step reasoning.
+- **Large Context** — Tasks requiring >200k token input.
 
-### JavaScript / TypeScript (incl. React/Next)
+Classify each task into a tier, then pick an agent with available quota and select the ★ preferred model for that tier. Fall back to other models in the same tier when the preferred model's agent has no quota.
 
-- Format+lint: ESLint + Prettier.
-- When configuring Prettier, always add and maintain `.prettierignore` so generated/build outputs and composed files are not formatted/linted as source (e.g., `dist/`, build artifacts, and `AGENTS.md` when generated by compose-agentsmd).
-- Typecheck: `tsc` with strict settings for TS projects.
-- Dependency scan: `osv-scanner`. If unsupported, use the package manager's audit tooling.
+## Claude
 
-### Python
+| Tier | Model | Effort | Notes |
+|------|-------|--------|-------|
+| Light | claude-haiku-4-5-20251001 | — | Effort not supported; SWE-bench 73% |
+| Standard | claude-sonnet-4-6 | medium | ★ Default; SWE-bench 80% |
+| Heavy | claude-opus-4-6 | high | SWE-bench 81%; `max` effort for hardest tasks |
 
-- Format+lint: Ruff.
-- Typecheck: Pyright.
-- Dependency scan: pip-audit.
+Effort levels: `low` / `medium` / `high` (Opus also supports `max`).
 
-### Go
+## Codex
 
-- Format: gofmt.
-- Lint/static analysis: golangci-lint (includes staticcheck).
-- Dependency scan: govulncheck.
+| Tier | Model | Effort | Notes |
+|------|-------|--------|-------|
+| Light | gpt-5.1-codex-mini | medium | `medium`/`high` only |
+| Standard | gpt-5.3-codex | medium | ★ Latest flagship; SWE-bench Pro 57% |
+| Standard | gpt-5.2-codex | medium | Previous gen; SWE-bench Pro 56% |
+| Standard | gpt-5.2 | medium | General-purpose; best non-codex reasoning; SWE-bench 80% |
+| Heavy | gpt-5.3-codex | xhigh | ★ Best codex at max effort |
+| Heavy | gpt-5.1-codex-max | xhigh | Extended reasoning; context compaction |
+| Heavy | gpt-5.2-codex | xhigh | Alternative |
+| Heavy | gpt-5.2 | xhigh | General reasoning fallback |
 
-### Rust
+Effort levels: `low` / `medium` / `high` / `xhigh` (gpt-5.1-codex-mini: `medium` / `high` only).
 
-- Format: cargo fmt.
-- Lint/static analysis: cargo clippy with warnings as errors.
-- Dependency scan: cargo audit.
+## Gemini
 
-### Java
+| Tier | Model | Effort | Notes |
+|------|-------|--------|-------|
+| Light | gemini-3-flash-preview | — | SWE-bench 78%; strong despite Light tier |
+| Standard | gemini-3-pro-preview | — | ★ 1M token context; SWE-bench 76% |
+| Large Context | gemini-3-pro-preview | — | >200k token tasks; 1M context |
 
-- Format: Spotless + google-java-format.
-- Lint/static analysis: Checkstyle + SpotBugs.
-- Dependency scan: OWASP Dependency-Check.
+Effort not supported. When `gemini-3-1-pro-preview` becomes available in Gemini CLI, promote it to Standard (SWE-bench 81%).
 
-### Kotlin
+## Copilot
 
-- Format: Spotless + ktlint.
-- Lint/static analysis: detekt.
-- Compiler: enable warnings-as-errors in CI; if impractical, get explicit user approval before relaxing.
+Copilot charges different quota per model. Prefer lower-multiplier models when task complexity allows. Effort is not configurable (ignored).
 
-### C#
+| Tier | Model | Quota | Notes |
+|------|-------|-------|-------|
+| Free | gpt-5-mini | 0x | ★ SWE-bench ~70%; simple tasks |
+| Free | gpt-4.1 | 0x | 1M context; SWE-bench 55% |
+| Light | claude-haiku-4-5 | 0.33x | ★ SWE-bench 73% |
+| Light | gpt-5.1-codex-mini | 0.33x | Mechanical transforms |
+| Standard | claude-sonnet-4-6 | 1x | ★ Default; SWE-bench 80% |
+| Standard | gpt-5.3-codex | 1x | Latest codex flagship |
+| Standard | gpt-5.2 | 1x | Best general reasoning; SWE-bench 80% |
+| Standard | gpt-5.2-codex | 1x | Agentic coding |
+| Standard | gpt-5.1-codex-max | 1x | Extended reasoning; compaction |
+| Standard | claude-sonnet-4-5 | 1x | SWE-bench 77%; prefer 4.6 |
+| Standard | gpt-5.1-codex | 1x | SWE-bench 77% |
+| Standard | gpt-5.1 | 1x | General purpose; SWE-bench ~76% |
+| Standard | gemini-3-pro | 1x | 1M context; SWE-bench 76% |
+| Standard | claude-sonnet-4 | 1x | Legacy; SWE-bench 73%; last choice |
+| Heavy | claude-opus-4-6 | 3x | ★ SWE-bench 81% |
+| Heavy | claude-opus-4-5 | 3x | SWE-bench 81%; prefer 4.6 |
+| — | claude-opus-4-6 fast | 30x | Avoid; excessive quota cost |
 
-- Format: dotnet format (verify-no-changes in CI).
-- Lint/static analysis: enable .NET analyzers; treat warnings as errors; enable nullable reference types.
-- Dependency scan: `dotnet list package --vulnerable`.
+## Routing principles
 
-### C++
+- All agents (claude, codex, gemini, copilot) operate on independent flat-rate subscriptions with periodic quota limits. Route by model quality, quota conservation, and quota distribution.
+- All agents can execute code, modify files, and perform multi-step tasks. Route by model quality and quota, not by execution capability.
+- Spread work across agents to maximize total throughput.
+- For large-context tasks (>200k tokens), prefer Gemini (1M token context).
+- For trivial tasks, prefer Copilot free-tier models (0x quota) before consuming other agents' quota.
+- When multiple agents can handle a task equally well, prefer the one with the most remaining quota.
+- Before selecting or spawning any sub-agent, run `ai-quota` to check availability — mandatory. If `ai-quota` is unavailable or fails, report the inability and stop; do not spawn any sub-agent without quota verification.
 
-- Format: clang-format.
-- Lint/static analysis: clang-tidy.
-- Build: enable strong warnings and treat as errors; run sanitizers (ASan/UBSan) in CI where supported.
+## Quota fallback logic
 
-### PowerShell
+If the primary agent has no remaining quota:
 
-- Format+lint: PSScriptAnalyzer (Invoke-Formatter + Invoke-ScriptAnalyzer).
-- Runtime: Set-StrictMode -Version Latest; fail fast on errors.
-- Tests: Pester when tests exist.
-- Enforce PSScriptAnalyzer via the repo's standard `verify` command/script when PowerShell is used; treat findings as errors.
+1. Query quota for all agents.
+2. Select any agent with available quota that has a model at the required tier.
+3. For Copilot fallback, prefer lower-multiplier models to conserve quota.
+4. If the fallback model is significantly less capable, note the degradation in the dispatch report.
+5. If no agent has quota, queue the task and report the block immediately; do not drop silently.
 
-### Shell (sh/bash)
+## Routing decision sequence
 
-- Format: shfmt.
-- Lint: shellcheck.
-
-### Dockerfile
-
-- Lint: hadolint.
-
-### Terraform
-
-- Format: terraform fmt -check.
-- Validate: terraform validate.
-- Lint: tflint.
-- Security scan: trivy config.
-
-### YAML
-
-- Lint: yamllint.
-
-### Markdown
-
-- Lint: markdownlint.
+1. Classify the task tier (Free / Light / Standard / Heavy / Large Context).
+2. For Free tier: dispatch to Copilot with a 0x model. Skip quota check.
+3. For other tiers: check quota for all agents via `ai-quota`.
+4. Pick the agent with available quota at the required tier; prefer the agent with the most remaining quota when multiple qualify.
+5. Set `agent_type`, `model`, and `effort` from the tables above (omit `effort` when column shows —).
+6. If primary choice has no quota: apply fallback logic.
+7. Include the chosen agent, model, tier, and effort in the dispatch report.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/multi-agent-delegation.md
 
@@ -305,6 +311,16 @@ When operating in delegated mode:
 - Do not emit notification sounds.
 - Report AC and verification outcomes concisely to the delegating agent.
 - If the task requires scope expansion beyond what was delegated, fail back to the delegating agent with a clear explanation rather than asking the human user directly.
+
+## Delegation prompt hygiene
+
+- Delegated agents MUST treat the delegator as the requester and MUST NOT ask the human user for plan approval. If blocked by repo rules, escalate to the delegator (not the human).
+- Delegating prompts MUST explicitly state delegated mode and whether plan approval is already granted; include AC and verification requirements.
+- Agents spawned in a repository read that repository's AGENTS.md and follow all rules automatically. Do not duplicate rule content in delegation prompts; focus prompts on the task description, context, and acceptance criteria.
+
+## Read-only / no-write claims
+
+- If a delegated agent reports read-only/no-write constraints, it MUST attempt a minimal, reversible temp-directory probe (create/write/read/delete under the OS temp directory) and report the exact failure/rejection message verbatim.
 
 ## Restricted operations
 
@@ -329,6 +345,7 @@ The following operations require explicit delegation from the delegating agent o
 
 ## Cost optimization (model selection)
 
+- When spawning agents, always explicitly specify `model` and `effort` (where supported). Never rely on defaults; defaulting wastes budget by over-provisioning.
 - When spawning agents, minimize the **total cost to achieve the goal**. Total cost includes model pricing, reasoning/thinking token consumption, context usage, and retry overhead.
 - Use the minimum reasoning effort level (e.g., low/medium/high/xhigh) that reliably produces correct output for the task; extended reasoning increases cost significantly.
 - Prefer newer-generation models at lower reasoning effort over older models at maximum reasoning effort when both can succeed; newer models often achieve equal quality with less thinking overhead.
@@ -345,6 +362,20 @@ The following operations require explicit delegation from the delegating agent o
 Source: github:metyatech/agent-rules@HEAD/rules/global/planning-and-approval-gate.md
 
 # Planning and approval gate
+
+## Approval waiver (trivial tasks)
+
+- In direct mode, you MAY proceed without asking for explicit approval when the user request is a trivial operational check and the action is low-risk and reversible.
+- Allowed under this waiver:
+  - Read-only inspection and verification (including running linters/tests/builds) that does not modify repo files.
+  - Spawning a sub-agent for a read-only smoke check (no repo writes; temp-only and cleaned up).
+  - Creating temporary files only under the OS temp directory (and deleting them during the task).
+- Not allowed under this waiver (approval is still required):
+  - Any manual edit of repository files, configuration files, or rule files.
+  - Installing/uninstalling dependencies or changing tool versions.
+  - Git operations beyond status/diff/log (commit/push/merge/release).
+  - Any external side effects (deployments, publishing, API writes, account/permission changes).
+- If there is any meaningful uncertainty about impact, request approval as usual.
 
 - Default to a two-phase workflow: clarify goal + plan first, execute after explicit requester approval.
 - In delegated mode (see Multi-agent delegation), the delegation itself constitutes plan approval. Do not re-request approval from the human user. If scope expansion is needed, fail back to the delegating agent.
@@ -363,8 +394,55 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/planning-and-approval-gat
   - Confirm the plan with the requester, ask for approval explicitly, and wait for a clear "yes" before executing.
   - Once the requester has approved a plan, proceed within that plan without re-requesting approval; re-request approval only when you change or expand the plan.
   - Do not treat the original task request as plan approval; approval must be an explicit response to the presented plan.
+  - Include a compact approval-request block at the end of the plan proposal message so the requester can approve with a single short reply.
+    - Template:
+      ```text
+      Approval request
+      - Reply "yes" to approve this plan and proceed.
+      - Reply with changes to revise before executing.
+      ```
 - If state-changing execution starts without the required post-plan "yes", stop immediately, report the gate miss, add/update a prevention rule, regenerate AGENTS.md, and then restart from the approval gate.
 - No other exceptions: even if the user requests immediate execution (e.g., "skip planning", "just do it"), treat that as a request to move quickly through this gate, not to bypass it.
+
+## Scope-based blanket approval
+
+- When the user gives a broad directive that clearly encompasses multiple steps (e.g., "fix everything", "do all of these"), treat it as approval for all work within that scope; do not re-request approval for individual sub-steps, batches, or obviously implied follow-up actions.
+- Obviously implied follow-up includes: rebuild linked packages, restart local services, update global installs, and other post-change deployment steps covered by existing rules.
+- Re-request approval only when expanding beyond the original scope or when an action carries risk not covered by the original directive.
+
+## Reviewer proxy approval
+
+- When the autonomous-orchestrator skill is active, the skill invocation itself constitutes blanket approval for all operations within user-owned repositories. The orchestrator MUST approve plans via reviewer proxy without asking the human user.
+- The reviewer proxy evaluates plans against all rules, known error patterns, and quality standards before approving.
+- If the reviewer proxy approves (all checklist items pass), proceed without human approval.
+- If the reviewer proxy flags concerns, escalate to the human user.
+- The human user may override or interrupt at any time; user messages always take priority.
+- Reviewer proxy does NOT apply to restricted operations (creating/deleting repositories, force-pushing, rewriting published git history) — these always require human approval per Multi-agent delegation rules.
+- During autonomous operation, the orchestrator applies rule modifications directly when the reviewer proxy confirms they are safe and consistent with existing policies. Escalate to the human user only if the change conflicts with existing rules or carries ambiguous risk.
+
+Source: github:metyatech/agent-rules@HEAD/rules/global/post-change-deployment.md
+
+# Post-change deployment
+
+After modifying code in a repository, check whether the changes require
+deployment steps beyond commit/push before concluding.
+
+## Globally linked packages
+
+- If the repository is globally installed via `npm link` (identifiable by
+  `npm ls -g --depth=0` showing `->` pointing to a local path), run the
+  repo's build command after code changes so the global binary reflects
+  the update.
+- Verify the rebuilt output is functional (e.g., run the CLI's `--version`
+  or a smoke command).
+
+## Locally running services and scheduled tasks
+
+- If the repository powers a locally running service, daemon, or scheduled
+  task, rebuild and restart the affected component after code changes.
+- Verify the restart with deterministic evidence (new PID, port check,
+  service status query, or log entry showing updated behavior).
+- Do not claim completion until the running instance reflects the changes.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/quality-testing-and-errors.md
 
@@ -382,29 +460,18 @@ For AC definition, verification evidence, regression tests, and final reporting 
 - Enforce via CI: run the full suite on pull requests and on pushes to the default branch, and make it a required status check for merges; if no CI harness exists, add one using repo-standard commands.
 - Configure required status checks on the default branch when you have permission; otherwise report the limitation.
 - Do not rely on smoke-only gating or scheduled-only full runs for correctness; merges must require the full suite.
-- Ensure commit-time automation (pre-commit or repo-native) runs the full suite and blocks commits.
+- Ensure commit-time automation (pre-commit or repo-native) runs the full suite and blocks commits. This is a hard prerequisite: before making the first commit in a repository during a session, verify that pre-commit hooks are installed and functional; if not, install them before any other commits.
+- If pre-commit hooks cannot be installed (environment restriction, no supported tool), manually run the repo's full verify command before every commit and confirm it passes; do not proceed to `git commit` until verify succeeds.
 - Never disable checks, weaken assertions, loosen types, or add retries solely to make checks pass.
 - If the execution environment restricts test execution (no network, no database, sandboxed), run the available subset, document what was skipped, and ensure CI covers the remainder.
+- When delivering a user-facing tool or GUI, perform end-to-end manual verification (start the service, exercise each feature, confirm correct behavior) in addition to automated tests. Do not rely solely on unit tests for user-facing deliverables.
+- When manual testing reveals issues or unexpected behavior, convert those findings into automated tests before fixing; the test must fail before the fix and pass after.
 
-## Tests (behavior changes)
+## Tests
 
 - Follow test-first: add/update tests, observe failure, implement the fix, then observe pass.
-- Cover success, failure, boundary, invalid input, and key state transitions (including first-run/cold-start vs subsequent-run behavior when relevant); include representative concurrency/retry/recovery when relevant.
 - Keep tests deterministic; minimize time/random/external I/O; inject when needed.
-- For deterministic output files, use full-content snapshot/golden tests.
-- Prefer making nondeterministic failures reproducible over adding sleeps/retries; do not mask flakiness.
-- For timing/order/race issues, prefer deterministic synchronization (events, versioned state, acks/handshakes) over fixed sleeps.
 - If a heuristic wait is unavoidable, it MUST be condition-based with a hard deadline and diagnostics, and requires explicit requester approval.
-- For integration boundaries (network/DB/external services/UI flows), add an integration/E2E/contract test that exercises the boundary; avoid unit-only coverage for integration bugs.
-- For non-trivial changes, create a small test matrix (scenarios × inputs × states) and cover the highest-risk combinations; document intentional gaps.
-
-## Feedback loops and root causes
-
-- Treat time-to-detect and time-to-fix as quality attributes; shorten the feedback loop with automation and observability rather than relying on manual QA.
-- For any defect fix or incident remediation, perform a brief root-cause classification: implementation mistake, design deficit, and/or ambiguous/incorrect requirements.
-- Feed the root cause upstream in the same change set: add or tighten tests/checks/alerts, update specs/acceptance criteria, and update design docs/ADRs when applicable.
-- If the failure should have been detected earlier, add a gate at the earliest reliable point (lint/typecheck/tests/CI required checks or runtime alerts/health checks); skipping this requires explicit user approval.
-- Record the prevention mechanism (what will catch it next time) in the PR description or issue comment; avoid "fixed" without a concrete feedback-loop improvement.
 
 ## Exceptions
 
@@ -422,44 +489,40 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/release-and-publication.m
 
 # Release and publication
 
-## Packaging and distribution
-
 - Include LICENSE in published artifacts (copyright holder: metyatech).
 - Do not ship build/test artifacts or local configs; ensure a clean environment can use the product via README steps.
 - Define a SemVer policy and document what counts as a breaking change.
+- Keep package version and Git tag consistent.
+- Run dependency security checks before release.
+- Verify published packages resolve and run correctly before reporting done.
 
 ## Public repository metadata
 
 - For public repos, set GitHub Description, Topics, and Homepage.
-- Ensure required repo files exist: .github/workflows/ci.yml, issue templates, PR template, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, CHANGELOG.md.
-- Configure CI to run the repo's standard lint/test/build commands.
+- Assign Topics from the standard set below. Every repo must have at least one standard topic when applicable; repos that do not match any standard topic use descriptive topics relevant to their domain.
+  - `agent-skill`: repo contains a SKILL.md (an installable agent skill).
+  - `agent-tool`: CLI tool or MCP server used by agents (e.g., task-tracker, agents-mcp, compose-agentsmd).
+  - `agent-rule`: rule source or ruleset repository (e.g., agent-rules).
+  - `unreal-engine`: Unreal Engine plugin or sample project.
+  - `qti`: QTI assessment ecosystem tool or library.
+  - `education`: course content, teaching materials, or student-facing platform.
+  - `docusaurus`: Docusaurus plugin or extension.
+- Additional descriptive topics (language, framework, domain keywords) may be added freely alongside standard topics.
+- Review and update the standard topic set when the repository landscape changes materially (new domain clusters emerge or existing ones become obsolete).
+- Verify topics are set as part of the new-repository compliance gate.
 
-## Versioning and release flow
+## Delivery chain gate
 
-- Update version metadata when release content changes; keep package version and Git tag consistent.
-- Create and push a release tag; create a GitHub Release based on CHANGELOG.
-- If asked to choose a version, decide it yourself.
-- When bumping a version, create the GitHub Release and publish the package in the same update.
-- For npm publishing, ask the user to run npm publish (do not execute it directly).
-- Before publishing, run required prep commands (e.g., npm install, npm test, npm pack --dry-run) and only proceed when ready.
-- If authentication fails during publish, ask the user to complete the publish step.
-- Run dependency security checks before release, address critical issues, and report results.
-- After publishing, update any locally installed copy to the newly published release and verify the resolved version.
-  - Completion gate: do not report “done” until this verification is completed (or the user explicitly declines).
-  - Must be expressed as explicit Acceptance Criteria and reported with outcomes (PASS/FAIL/N/A) + evidence in the final report:
-    - AC1 (registry): verify the published version exists in the registry (e.g., `npm view <pkg> version`).
-    - AC2 (fresh install): verify the latest package resolves and runs (e.g., `npx <pkg>@latest --version`).
-    - AC3 (global update, if applicable): if the package is installed globally, update it to the published version and verify (e.g., `npm ls -g <pkg> --depth=0`, `npm i -g <pkg>@latest`, then `<cmd> --version`).
-    - If AC3 is not applicable (not installed globally) or cannot be performed, mark it N/A and state the reason explicitly.
-  - For npm CLIs:
-    - If installed globally: check `npm ls -g <pkg> --depth=0`, update via `npm i -g <pkg>@latest` (or the published dist-tag), then verify with `<pkg> --version`.
-    - If not installed globally: skip the global update, and verify availability via `npx <pkg>@latest --version` (or the ecosystem-equivalent).
+Before reporting a code change as complete in a publishable package, verify the full delivery chain. Each step that applies must be done; do not stop mid-chain.
 
-## Published artifact requirements
+1. Committed
+2. Pushed
+3. Version bumped (if publishable change)
+4. GitHub Release created
+5. Package published to registry
+6. Global/local install updated and verified
 
-- Populate package metadata (name, description, repository, issues, homepage, engines).
-- Validate executable entrypoints and required shebangs so installed commands work.
-- If a repo represents a single tool/product, publish a single package (bundle related scripts).
+If you discover you stopped mid-chain, resume from where you left off immediately — do not wait for the user to point it out.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/skill-authoring.md
 
@@ -486,8 +549,9 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/skill-authoring.md
 - Each skill lives in its own repository.
 - Use clear, descriptive repository names (e.g., `skill-manager`).
 - Keep SKILL.md at the repository root for `npx skills add` compatibility.
-- Install and manage skills via `npx skills add <owner>/<repo>` (vercel-labs/skills);
-  do not build custom installers.
+- Install and manage skills via `npx skills add <owner>/<repo> --yes --global`
+  (vercel-labs/skills); always use `--yes --global` to install globally without
+  interactive prompts. Do not build custom installers.
 
 ## Publishing
 
@@ -503,6 +567,68 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/skill-authoring.md
 - Keep instructions concise, action-oriented, and testable.
 - Do not duplicate rules already covered by AGENTS.md global rules
   (e.g., TDD, verification, planning gates); reference them instead.
+
+Source: github:metyatech/agent-rules@HEAD/rules/global/task-lifecycle-tracking.md
+
+# Task lifecycle tracking
+
+- When an actionable task emerges during a session, immediately record it with `task-tracker add` so it persists on disk regardless of session termination.
+- `task-tracker` is the persistent cross-session tracker; session-scoped task tools (e.g., TaskCreate) are supplementary. Always use `task-tracker add` first; session-scoped tools may be used in addition but never as a replacement.
+- At the start of any session that may involve state-changing work, run `task-tracker check` and report findings before starting new work.
+- When reporting a task as complete, state the lifecycle stage explicitly (committed/pushed/released/etc.); never claim "done" when downstream stages remain incomplete.
+- If `task-tracker` is not installed, install it via `npm install -g @metyatech/task-tracker` before proceeding.
+- The task-tracker state file (`.tasks.jsonl`) must be committed to version control; do not add it to `.gitignore`.
+
+Source: github:metyatech/agent-rules@HEAD/rules/global/thread-inbox.md
+
+# Thread inbox
+
+- `thread-inbox` is the persistent cross-session conversation context tracker. Use it to preserve discussion topics, decisions, and context that span sessions.
+- If `thread-inbox` is not installed, install it via `npm install -g @metyatech/thread-inbox` before proceeding.
+- Store `.threads.jsonl` in the workspace root directory (use `--dir <workspace-root>`). Do not commit it to version control; it is local conversation context, not project state.
+
+## Status model
+
+Thread status is explicit (set by commands, not auto-computed):
+
+- `active` — open, no specific action pending.
+- `waiting` — user sent a message; AI should respond. Auto-set when adding `--from user` messages.
+- `needs-reply` — AI needs user input or decision. Set via `--status needs-reply`.
+- `review` — AI reporting completion; user should review. Set via `--status review`.
+- `resolved` — closed.
+
+## Session start
+
+- Run `thread-inbox inbox --dir <workspace-root>` to find threads needing user action (`needs-reply` and `review`).
+- Run `thread-inbox list --status waiting --dir <workspace-root>` to find threads needing agent attention.
+- Report findings before starting new work.
+
+## When to create threads
+
+- Create a thread when a new discussion topic, design decision, or multi-session initiative emerges.
+- Do not create threads for tasks already tracked by `task-tracker`; threads are for context and decisions, not work items.
+- Thread titles should be concise topic descriptions (e.g., "CI strategy for skill repos", "thread-inbox design approach").
+
+## When to add messages
+
+- Add a `--from user` message for any substantive user interaction: decisions, preferences, directions, questions, status checks, feedback, and approvals. Thread-inbox is the only cross-session persistence mechanism for conversation context; err on the side of recording rather than omitting. Status auto-sets to `waiting`.
+- Add a `--from ai` message for informational updates (progress, notes). Status does not change by default.
+- Add a `--from ai --status needs-reply` message when asking the user a question or requesting a decision.
+- Add a `--from ai --status review` message when reporting task completion or results that need user review.
+- Record the user's actual words as `--from user`, not a third-person summary or paraphrase. Record the AI's actual response as `--from ai`. The thread should read as a conversation transcript, not meeting minutes.
+
+## Thread lifecycle
+
+- Resolve threads when the topic is fully addressed or the decision is implemented and recorded in rules.
+- Reopen threads if the topic resurfaces.
+- Periodically purge resolved threads to keep the inbox clean.
+
+## Relationship to other tools
+
+- `task-tracker`: Tracks actionable work items with lifecycle stages. Use for "what to do."
+- `thread-inbox`: Tracks discussion context and decisions. Use for "what was discussed/decided."
+- AGENTS.md rules: Persistent invariants and constraints. Use for "how to behave."
+- If a thread captures a persistent behavioral preference, encode it as a rule and resolve the thread.
 
 Source: github:metyatech/agent-rules@HEAD/rules/global/user-identity-and-accounts.md
 
@@ -522,7 +648,11 @@ Source: github:metyatech/agent-rules@HEAD/rules/global/writing-and-documentation
 
 - Respond in Japanese unless the user requests otherwise.
 - Always report whether you committed and whether you pushed; include repo(s), branch(es), and commit hash(es) when applicable.
-- After completing a response, emit the Windows SystemSounds.Asterisk sound via PowerShell when possible.
+- After completing a response, emit the Windows SystemSounds.Asterisk sound via PowerShell only when operating in direct mode (top-level agent).
+- If operating in delegated mode (spawned by another agent / sub-agent), do not emit notification sounds.
+- If operating as a manager/orchestrator, do not ask delegated sub-agents to emit sounds; emit at most once when the overall task is complete (direct mode only).
+
+- When delivering a new tool, feature, or artifact to the user, explain what it is, how to use it (with example commands), and what its key capabilities are. Do not report only completion status; always include a usage guide in the same response.
 
 ## Developer-facing writing
 
