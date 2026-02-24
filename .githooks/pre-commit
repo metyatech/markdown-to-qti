@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Run verification (markdownlint for markdown-only repos)
+if command -v markdownlint > /dev/null 2>&1; then
+  markdownlint **/*.md --ignore node_modules --ignore AGENTS.md || exit 1
+fi
+
+# Update AGENTS.md (non-blocking)
+if command -v compose-agentsmd > /dev/null 2>&1; then
+  compose-agentsmd --compose || true
+  git add AGENTS.md || true
+fi
