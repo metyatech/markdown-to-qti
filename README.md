@@ -19,11 +19,12 @@ If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 in
 
 ## Development Commands
 
-- Build: `.\\tools\\gradle-java23.ps1 build`
-- Test: `.\\tools\\gradle-java23.ps1 test`
-- Lint: `.\\tools\\gradle-java23.ps1 detekt`
-- Format: `.\\tools\\gradle-java23.ps1 spotlessApply`
-- Format check: `.\\tools\\gradle-java23.ps1 spotlessCheck`
+- Verify: `.\tools\gradle-java23.ps1 verify` (Runs all checks: build, test, lint, format)
+- Build: `.\tools\gradle-java23.ps1 build`
+- Test: `.\tools\gradle-java23.ps1 test`
+- Lint: `.\tools\gradle-java23.ps1 detekt`
+- Format: `.\tools\gradle-java23.ps1 spotlessApply`
+- Format check: `.\tools\gradle-java23.ps1 spotlessCheck`
 
 ## CLI Usage
 
@@ -78,7 +79,10 @@ Raw HTML blocks/inline HTML are not supported and will raise an error.
 
 None yet.
 
-## Release / Deployment
+## Community and Legal
 
-Not applicable yet.
-
+- [SECURITY.md](SECURITY.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [CHANGELOG.md](CHANGELOG.md)
+- [LICENSE](LICENSE)
