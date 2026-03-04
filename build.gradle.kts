@@ -74,3 +74,9 @@ detekt {
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "21"
 }
+
+tasks.register("verify") {
+    group = "verification"
+    description = "Runs all verification tasks including tests, linting, and formatting checks."
+    dependsOn("spotlessCheck", "detekt", "test")
+}
