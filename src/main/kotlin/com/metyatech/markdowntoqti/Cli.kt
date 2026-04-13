@@ -25,7 +25,12 @@ fun runCli(
     output: PrintStream = System.out,
     error: PrintStream = System.err,
 ): Int {
-    val parsed = parseArgs(args, error) ?: return 1
+    val parsed =
+        when (val result = parseArgs(args, output, error)) {
+            is ParseResult.Success -> result.options
+            is ParseResult.HelpOrVersion -> return 0
+            is ParseResult.Error -> return 1
+        }
     val inputs = resolveInputs(parsed.inputPaths, error) ?: return 1
 
     val outputDir = parsed.outputDir
@@ -98,6 +103,16 @@ private data class CliOptions(
     val json: Boolean,
 )
 
+private sealed interface ParseResult {
+    data class Success(
+        val options: CliOptions,
+    ) : ParseResult
+
+    data object HelpOrVersion : ParseResult
+
+    data object Error : ParseResult
+}
+
 private data class AssessmentItemRef(
     val identifier: String,
     val href: String,
@@ -105,11 +120,12 @@ private data class AssessmentItemRef(
 
 private fun parseArgs(
     args: Array<String>,
+    output: PrintStream,
     error: PrintStream,
-): CliOptions? {
+): ParseResult {
     if (args.isEmpty()) {
         printUsage(error)
-        return null
+        return ParseResult.Error
     }
 
     val inputPaths = mutableListOf<Path>()
@@ -127,7 +143,7 @@ private fun parseArgs(
                     args.getOrNull(index + 1)
                         ?: run {
                             error.println("Missing value for --input")
-                            return null
+                            return ParseResult.Error
                         }
                 inputPaths.add(Path.of(value))
                 index += 2
@@ -137,7 +153,7 @@ private fun parseArgs(
                     args.getOrNull(index + 1)
                         ?: run {
                             error.println("Missing value for --output-dir")
-                            return null
+                            return ParseResult.Error
                         }
                 outputDir = Path.of(value)
                 index += 2
@@ -151,7 +167,7 @@ private fun parseArgs(
                     args.getOrNull(index + 1)
                         ?: run {
                             error.println("Missing value for --test-title")
-                            return null
+                            return ParseResult.Error
                         }
                 testTitle = value
                 index += 2
@@ -165,37 +181,39 @@ private fun parseArgs(
                 index += 1
             }
             "--version", "-V" -> {
-                error.println("markdown-to-qti version $VERSION")
-                return null
+                output.println("markdown-to-qti version $VERSION")
+                return ParseResult.HelpOrVersion
             }
             "--help", "-h" -> {
-                printUsage(error)
-                return null
+                printUsage(output)
+                return ParseResult.HelpOrVersion
             }
             else -> {
                 error.println("Unknown argument: $arg")
                 printUsage(error)
-                return null
+                return ParseResult.Error
             }
         }
     }
 
     if (inputPaths.isEmpty()) {
         error.println("At least one --input is required.")
-        return null
+        return ParseResult.Error
     }
     if (testTitle.isNullOrBlank()) {
         error.println("--test-title is required.")
-        return null
+        return ParseResult.Error
     }
 
-    return CliOptions(
-        inputPaths = inputPaths,
-        outputDir = outputDir,
-        validateOnly = validateOnly,
-        verbose = verbose,
-        testTitle = testTitle,
-        json = json,
+    return ParseResult.Success(
+        CliOptions(
+            inputPaths = inputPaths,
+            outputDir = outputDir,
+            validateOnly = validateOnly,
+            verbose = verbose,
+            testTitle = testTitle,
+            json = json,
+        ),
     )
 }
 

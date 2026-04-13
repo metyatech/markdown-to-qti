@@ -24,6 +24,7 @@ If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 in
 - Lint: `.\\tools\\gradle-java23.ps1 detekt`
 - Format: `.\\tools\\gradle-java23.ps1 spotlessApply`
 - Format check: `.\\tools\\gradle-java23.ps1 spotlessCheck`
+- Verify: `.\\tools\\gradle-java23.ps1 verify`
 
 ## CLI Usage
 
@@ -81,4 +82,3 @@ None yet.
 ## Release / Deployment
 
 Not applicable yet.
-

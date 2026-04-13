@@ -41,6 +41,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.register("verify") {
+    dependsOn("spotlessCheck", "detekt", "test")
+}
+
 application {
     mainClass.set("com.metyatech.markdowntoqti.CliKt")
     applicationDefaultJvmArgs = listOf("-Dfile.encoding=UTF-8")
