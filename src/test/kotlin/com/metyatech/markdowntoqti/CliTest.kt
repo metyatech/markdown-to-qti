@@ -120,10 +120,11 @@ class CliTest {
 
         val markdown =
             """
+            ---
+            question_type: descriptive
+            time_budget_seconds: 60
+            ---
             # Image Prompt
-
-            ## Type
-            descriptive
 
             ## Prompt
             Identify the highlighted part.
@@ -324,6 +325,112 @@ class CliTest {
         assertTrue(Files.exists(assessmentTest))
         val actualXml = assessmentTest.readText()
         assertEquals(normalizeXml(expectedAssessment), normalizeXml(actualXml))
+    }
+
+    @Test
+    fun cli_manifest_writesItemsInManifestOrderWithSummedTimeLimit() {
+        val tempDir = Files.createTempDirectory("qti-cli-manifest-test")
+        val outputDir = Files.createTempDirectory("qti-cli-manifest-out")
+        val firstInput = tempDir.resolve("first.q.md")
+        val secondInput = tempDir.resolve("second.q.md")
+        firstInput.writeText(
+            """
+            ---
+            question_type: descriptive
+            time_budget_seconds: 45
+            ---
+            # First
+
+            ## Prompt
+            Explain the first concept.
+            """.trimIndent(),
+        )
+        secondInput.writeText(
+            """
+            ---
+            question_type: choice
+            time_budget_seconds: 75
+            ---
+            # Second
+
+            ## Prompt
+            Select the second option.
+
+            ## Options
+            - [ ] First
+            - [x] Second
+            """.trimIndent(),
+        )
+        val manifest = tempDir.resolve("manifest.yaml")
+        manifest.writeText(
+            """
+            title: Manifest Exam
+            items:
+              - second.q.md
+              - first.q.md
+            """.trimIndent(),
+        )
+
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--manifest",
+                    manifest.toString(),
+                    "--output-dir",
+                    outputDir.toString(),
+                ),
+            )
+
+        assertEquals(0, exitCode)
+        val assessmentXml = outputDir.resolve("assessment-test.qti.xml").readText()
+        assertTrue(assessmentXml.contains("title=\"Manifest Exam\""))
+        assertTrue(assessmentXml.contains("<qti-time-limits max-time=\"120\"/>"))
+        assertTrue(
+            assessmentXml.indexOf("identifier=\"second.q\"") <
+                assessmentXml.indexOf("identifier=\"first.q\""),
+        )
+    }
+
+    @Test
+    fun cli_manifest_usesExplicitManifestTimeLimit() {
+        val tempDir = Files.createTempDirectory("qti-cli-manifest-test")
+        val outputDir = Files.createTempDirectory("qti-cli-manifest-out")
+        val input = tempDir.resolve("question.q.md")
+        input.writeText(
+            """
+            ---
+            question_type: descriptive
+            time_budget_seconds: 45
+            ---
+            # Timed Question
+
+            ## Prompt
+            Explain the concept.
+            """.trimIndent(),
+        )
+        val manifest = tempDir.resolve("manifest.yaml")
+        manifest.writeText(
+            """
+            title: Explicit Time Exam
+            time_limit_seconds: 300
+            items:
+              - question.q.md
+            """.trimIndent(),
+        )
+
+        val exitCode =
+            runCli(
+                arrayOf(
+                    "--manifest",
+                    manifest.toString(),
+                    "--output-dir",
+                    outputDir.toString(),
+                ),
+            )
+
+        assertEquals(0, exitCode)
+        val assessmentXml = outputDir.resolve("assessment-test.qti.xml").readText()
+        assertTrue(assessmentXml.contains("<qti-time-limits max-time=\"300\"/>"))
     }
 }
 

@@ -1,7 +1,8 @@
+---
+question_type: descriptive
+time_budget_seconds: 120
+---
 # Photosynthesis Basics
-
-## Type
-descriptive
 
 ## Prompt
 Explain the role of chlorophyll in photosynthesis.

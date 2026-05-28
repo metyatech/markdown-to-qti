@@ -1,7 +1,8 @@
+---
+question_type: cloze
+time_budget_seconds: 90
+---
 # Code Cloze
-
-## Type
-cloze
 
 ## Prompt
 Fill code: `const total = {{sum}};`

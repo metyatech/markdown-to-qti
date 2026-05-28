@@ -50,7 +50,17 @@ internal enum class ClozeHandling {
 internal data class RenderedMarkdown(
     val xml: String,
     val localImages: List<String>,
-    val clozeAnswers: List<String>,
+    val clozeBlanks: List<ClozeBlank>,
+)
+
+internal enum class ClozeBlankKind {
+    EXACT,
+    REGEX,
+}
+
+internal data class ClozeBlank(
+    val answer: String,
+    val kind: ClozeBlankKind,
 )
 
 internal class MarkdownQtiRenderer(
@@ -87,17 +97,17 @@ internal class MarkdownQtiRenderer(
                 markdown
             }
         val document = parser.parse(normalized)
-        val clozeAnswers =
+        val clozeBlanks =
             if (clozeHandling == ClozeHandling.ENABLED) {
-                collectClozeAnswers(document)
+                collectClozeBlanks(document)
             } else {
                 emptyList()
             }
-        val responseIds = responseIdsFor(clozeAnswers)
+        val responseIds = responseIdsFor(clozeBlanks)
         val state =
             RenderState(
                 clozeHandling = clozeHandling,
-                clozeAnswers = clozeAnswers,
+                clozeBlanks = clozeBlanks,
                 responseIds = responseIds,
             )
         val builder = StringBuilder()
@@ -106,7 +116,7 @@ internal class MarkdownQtiRenderer(
         return RenderedMarkdown(
             xml = xml,
             localImages = state.localImages.distinct(),
-            clozeAnswers = clozeAnswers,
+            clozeBlanks = clozeBlanks,
         )
     }
 
@@ -126,17 +136,17 @@ internal class MarkdownQtiRenderer(
         if (paragraph !is Paragraph || paragraph.next != null) {
             throw unsupported("Inline content must not contain block elements", context, paragraph ?: document)
         }
-        val clozeAnswers =
+        val clozeBlanks =
             if (clozeHandling == ClozeHandling.ENABLED) {
-                collectClozeAnswers(document)
+                collectClozeBlanks(document)
             } else {
                 emptyList()
             }
-        val responseIds = responseIdsFor(clozeAnswers)
+        val responseIds = responseIdsFor(clozeBlanks)
         val state =
             RenderState(
                 clozeHandling = clozeHandling,
-                clozeAnswers = clozeAnswers,
+                clozeBlanks = clozeBlanks,
                 responseIds = responseIds,
             )
         val builder = StringBuilder()
@@ -145,7 +155,7 @@ internal class MarkdownQtiRenderer(
         return RenderedMarkdown(
             xml = xml,
             localImages = state.localImages.distinct(),
-            clozeAnswers = clozeAnswers,
+            clozeBlanks = clozeBlanks,
         )
     }
 
@@ -176,7 +186,7 @@ internal class MarkdownQtiRenderer(
             val state =
                 RenderState(
                     clozeHandling = ClozeHandling.DISABLED,
-                    clozeAnswers = emptyList(),
+                    clozeBlanks = emptyList(),
                     responseIds = emptyList(),
                 )
             val itemXml = renderChoiceContent(listItem, context, state)
@@ -196,7 +206,7 @@ internal class MarkdownQtiRenderer(
 
     private data class RenderState(
         val clozeHandling: ClozeHandling,
-        val clozeAnswers: List<String>,
+        val clozeBlanks: List<ClozeBlank>,
         val responseIds: List<String>,
         var blankIndex: Int = 0,
         val localImages: MutableList<String> = mutableListOf(),
@@ -648,45 +658,45 @@ internal class MarkdownQtiRenderer(
         }
     }
 
-    private fun collectClozeAnswers(document: Node): List<String> {
-        val answers = mutableListOf<String>()
+    private fun collectClozeBlanks(document: Node): List<ClozeBlank> {
+        val blanks = mutableListOf<ClozeBlank>()
 
         fun visit(node: Node) {
             when (node) {
                 is Text -> {
                     val parts = parseClozePrompt(node.literal)
-                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { blanks.add(it.blank) }
                 }
                 is Code -> {
                     val parts = parseClozePrompt(node.literal)
-                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { blanks.add(it.blank) }
                     return
                 }
                 is FencedCodeBlock -> {
                     val parts = parseClozePrompt(node.literal)
-                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { blanks.add(it.blank) }
                     return
                 }
                 is IndentedCodeBlock -> {
                     val parts = parseClozePrompt(node.literal)
-                    parts.filterIsInstance<ClozePart.Blank>().forEach { answers.add(it.blank.answer) }
+                    parts.filterIsInstance<ClozePart.Blank>().forEach { blanks.add(it.blank) }
                     return
                 }
             }
             node.children().forEach { child -> visit(child) }
         }
         visit(document)
-        return answers
+        return blanks
     }
 
-    private fun responseIdsFor(answers: List<String>): List<String> {
-        if (answers.isEmpty()) {
+    private fun responseIdsFor(blanks: List<ClozeBlank>): List<String> {
+        if (blanks.isEmpty()) {
             return emptyList()
         }
-        return if (answers.size == 1) {
+        return if (blanks.size == 1) {
             listOf("RESPONSE")
         } else {
-            answers.indices.map { index -> "RESPONSE_${index + 1}" }
+            blanks.indices.map { index -> "RESPONSE_${index + 1}" }
         }
     }
 
@@ -733,10 +743,18 @@ internal class MarkdownQtiRenderer(
             if (prompt.startsWith("{{", index)) {
                 val endIndex = prompt.indexOf("}}", index + 2)
                 require(endIndex != -1) { "Unclosed cloze blank in prompt" }
-                val answer = prompt.substring(index + 2, endIndex)
-                require(answer.trim().isNotEmpty()) { "Cloze blank must not be empty" }
+                val answer = prompt.substring(index + 2, endIndex).trim()
+                require(answer.isNotEmpty()) { "Cloze blank must not be empty" }
+                val blank =
+                    if (answer.length >= 2 && answer.startsWith("/") && answer.endsWith("/")) {
+                        val pattern = answer.substring(1, answer.length - 1)
+                        require(pattern.isNotBlank()) { "Regex cloze blank must not be empty" }
+                        ClozeBlank(pattern, ClozeBlankKind.REGEX)
+                    } else {
+                        ClozeBlank(answer, ClozeBlankKind.EXACT)
+                    }
                 flushText()
-                parts.add(ClozePart.Blank(ClozeBlank(answer.trim())))
+                parts.add(ClozePart.Blank(blank))
                 index = endIndex + 2
                 continue
             }
@@ -757,10 +775,6 @@ internal class MarkdownQtiRenderer(
             val blank: ClozeBlank,
         ) : ClozePart()
     }
-
-    private data class ClozeBlank(
-        val answer: String,
-    )
 }
 
 private fun Node.children(): Sequence<Node> =

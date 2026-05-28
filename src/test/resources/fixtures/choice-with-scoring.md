@@ -1,7 +1,8 @@
+---
+question_type: choice
+time_budget_seconds: 60
+---
 # Prime Number
-
-## Type
-choice
 
 ## Prompt
 Which number is prime?

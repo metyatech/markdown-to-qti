@@ -1,6 +1,7 @@
 package com.metyatech.markdowntoqti
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.xml.sax.InputSource
 import java.io.StringReader
@@ -37,6 +38,26 @@ class MarkdownToQtiGoldenTest {
                 "Fixture mismatch: $fixtureId",
             )
         }
+    }
+
+    @Test
+    fun convertMarkdownToQti_preservesRegexClozeBlankMetadata() {
+        val markdown =
+            """
+            ---
+            question_type: cloze
+            time_budget_seconds: 60
+            ---
+            # Regex Blank
+
+            ## Prompt
+            Enter a three-digit code: {{/[0-9]{3}/}}.
+            """.trimIndent()
+
+        val actualXml = convertMarkdownToQti(markdown, "regex-cloze")
+
+        assertTrue(actualXml.contains("interpretation=\"regex\""))
+        assertTrue(actualXml.contains("<qti-value>[0-9]{3}</qti-value>"))
     }
 }
 
