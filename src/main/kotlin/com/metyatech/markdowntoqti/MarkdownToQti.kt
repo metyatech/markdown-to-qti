@@ -27,6 +27,7 @@ private data class MarkdownQuestion(
     val identifier: String,
     val title: String,
     val type: QuestionType,
+    val timeBudgetSeconds: Int?,
     val prompt: RenderedMarkdown,
     val explanation: RenderedMarkdown? = null,
     val options: List<ChoiceOption> = emptyList(),
@@ -41,6 +42,7 @@ data class LocalImage(
 data class QtiConversionResult(
     val qtiXml: String,
     val localImages: List<LocalImage>,
+    val timeBudgetSeconds: Int?,
 )
 
 internal data class SectionContent(
@@ -59,6 +61,11 @@ private data class MarkdownParseResult(
     val imageSources: List<String>,
 )
 
+private data class QuestionFrontmatter(
+    val questionType: QuestionType,
+    val timeBudgetSeconds: Int,
+)
+
 fun convertMarkdownToQti(
     markdown: String,
     fixtureId: String,
@@ -74,7 +81,7 @@ fun convertMarkdownToQtiWithAssets(
 ): QtiConversionResult {
     val parsed = parseMarkdownQuestion(markdown, fixtureId, sourcePath)
     val localImages = resolveLocalImages(parsed.imageSources, sourcePath)
-    return QtiConversionResult(QtiBuilder(parsed.question).build(), localImages)
+    return QtiConversionResult(QtiBuilder(parsed.question).build(), localImages, parsed.question.timeBudgetSeconds)
 }
 
 private const val MIN_FENCE_LENGTH = 3
@@ -89,6 +96,16 @@ private fun parseMarkdownQuestion(
     val normalized = markdown.replace("\r\n", "\n")
     val lines = normalized.split("\n")
     var index = 0
+    val frontmatter =
+        if (lines.firstOrNull()?.trim() == "---") {
+            val endIndex = lines.drop(1).indexOfFirst { it.trim() == "---" }
+            require(endIndex != -1) { "Missing closing frontmatter delimiter" }
+            val frontmatterLines = lines.subList(1, endIndex + 1)
+            index = endIndex + 2
+            parseQuestionFrontmatter(frontmatterLines, sourcePath)
+        } else {
+            null
+        }
 
     fun nextNonEmptyLine(): Pair<String, Int>? {
         while (index < lines.size) {
@@ -105,7 +122,6 @@ private fun parseMarkdownQuestion(
     val titleLine =
         nextNonEmptyLine()
             ?: throw IllegalArgumentException("Missing title heading")
-    require(titleLine.first.trim() != "---") { "Front matter is not supported" }
     require(titleLine.first.startsWith("# ")) { "Title must start with '# '" }
     val title = titleLine.first.removePrefix("# ").trim()
     require(title.isNotBlank()) { "Title must not be empty" }
@@ -146,28 +162,21 @@ private fun parseMarkdownQuestion(
         sectionsByName[heading] = section
     }
 
-    val typeSection =
-        sectionsByName["Type"]
-            ?: throw IllegalArgumentException("Missing ## Type section")
-    val firstTypeLine =
-        typeSection.lines.firstOrNull()
-            ?: throw schemaError("Type value missing", sourcePath, typeSection.startLine)
-    if (firstTypeLine.isBlank()) {
-        throw schemaError("Type value must be on the line immediately after ## Type", sourcePath, typeSection.startLine)
-    }
-    val typeValue = firstTypeLine.trim()
-    if (typeSection.lines.drop(1).any { it.isNotBlank() }) {
-        throw schemaError("Type section must contain only a single word", sourcePath, typeSection.startLine)
-    }
     val type =
-        when (typeValue) {
-            "descriptive" -> QuestionType.DESCRIPTIVE
-            "choice" -> QuestionType.CHOICE
-            "cloze" -> QuestionType.CLOZE
-            else -> throw IllegalArgumentException("Unknown question type: $typeValue")
+        if (frontmatter != null) {
+            if (sectionsByName.containsKey("Type")) {
+                throw schemaError(
+                    "## Type is deprecated and not allowed with frontmatter",
+                    sourcePath,
+                    sectionsByName["Type"]?.headingLine,
+                )
+            }
+            frontmatter.questionType
+        } else {
+            parseLegacyType(sectionsByName["Type"], sourcePath)
         }
 
-    validateSectionOrder(sectionsInOrder, type, sourcePath)
+    validateSectionOrder(sectionsInOrder, type, sourcePath, frontmatter != null)
 
     val renderer = MarkdownQtiRenderer()
 
@@ -184,7 +193,7 @@ private fun parseMarkdownQuestion(
             clozeHandling = if (type == QuestionType.CLOZE) ClozeHandling.ENABLED else ClozeHandling.DISABLED,
         )
     if (type == QuestionType.CLOZE) {
-        require(promptRender.clozeAnswers.isNotEmpty()) { "Cloze prompt must include at least one blank" }
+        require(promptRender.clozeBlanks.isNotEmpty()) { "Cloze prompt must include at least one blank" }
     }
 
     val explanationRender =
@@ -235,6 +244,7 @@ private fun parseMarkdownQuestion(
             identifier = identifier,
             title = title,
             type = type,
+            timeBudgetSeconds = frontmatter?.timeBudgetSeconds,
             prompt = promptRender,
             explanation = explanationRender,
             options = options,
@@ -242,6 +252,89 @@ private fun parseMarkdownQuestion(
         )
 
     return MarkdownParseResult(question, imageSources.toList())
+}
+
+private fun parseQuestionFrontmatter(
+    lines: List<String>,
+    sourcePath: Path?,
+): QuestionFrontmatter {
+    val values = parseSimpleYamlMap(lines, sourcePath, lineOffset = 2)
+    val typeValue = values["question_type"] ?: throw schemaError("Missing required frontmatter: question_type", sourcePath, 2)
+    val questionType =
+        when (typeValue) {
+            "descriptive" -> QuestionType.DESCRIPTIVE
+            "choice" -> QuestionType.CHOICE
+            "cloze" -> QuestionType.CLOZE
+            "multi", "order", "match" -> throw IllegalArgumentException("Unsupported question_type: $typeValue")
+            else -> throw IllegalArgumentException("Unknown question_type: $typeValue")
+        }
+    val timeBudgetSeconds =
+        parsePositiveInt(values["time_budget_seconds"], "time_budget_seconds", sourcePath, 2)
+    return QuestionFrontmatter(questionType, timeBudgetSeconds)
+}
+
+private fun parseLegacyType(
+    typeSection: SectionContent?,
+    sourcePath: Path?,
+): QuestionType {
+    val section = typeSection ?: throw IllegalArgumentException("Missing ## Type section")
+    val firstTypeLine =
+        section.lines.firstOrNull()
+            ?: throw schemaError("Type value missing", sourcePath, section.startLine)
+    if (firstTypeLine.isBlank()) {
+        throw schemaError("Type value must be on the line immediately after ## Type", sourcePath, section.startLine)
+    }
+    val typeValue = firstTypeLine.trim()
+    if (section.lines.drop(1).any { it.isNotBlank() }) {
+        throw schemaError("Type section must contain only a single word", sourcePath, section.startLine)
+    }
+    return when (typeValue) {
+        "descriptive" -> QuestionType.DESCRIPTIVE
+        "choice" -> QuestionType.CHOICE
+        "cloze" -> QuestionType.CLOZE
+        else -> throw IllegalArgumentException("Unknown question type: $typeValue")
+    }
+}
+
+private fun parseSimpleYamlMap(
+    lines: List<String>,
+    sourcePath: Path?,
+    lineOffset: Int,
+): Map<String, String> {
+    val values = mutableMapOf<String, String>()
+    lines.forEachIndexed { index, rawLine ->
+        val line = rawLine.trim()
+        if (line.isBlank() || line.startsWith("#")) {
+            return@forEachIndexed
+        }
+        if (rawLine.firstOrNull()?.isWhitespace() == true) {
+            throw schemaError("Frontmatter must be a flat YAML map", sourcePath, lineOffset + index)
+        }
+        val separator = line.indexOf(':')
+        if (separator <= 0) {
+            throw schemaError("Invalid frontmatter entry: $line", sourcePath, lineOffset + index)
+        }
+        val key = line.substring(0, separator).trim()
+        val value = line.substring(separator + 1).trim().trim('"', '\'')
+        require(key.isNotBlank()) { "Frontmatter key must not be empty" }
+        require(!values.containsKey(key)) { "Duplicate frontmatter key: $key" }
+        values[key] = value
+    }
+    return values
+}
+
+internal fun parsePositiveInt(
+    value: String?,
+    fieldName: String,
+    sourcePath: Path?,
+    line: Int?,
+): Int {
+    val raw = value ?: throw schemaError("Missing required value: $fieldName", sourcePath, line)
+    val parsed = raw.toIntOrNull() ?: throw schemaError("$fieldName must be a positive integer", sourcePath, line)
+    if (parsed <= 0) {
+        throw schemaError("$fieldName must be a positive integer", sourcePath, line)
+    }
+    return parsed
 }
 
 internal fun parseScoringSection(
@@ -291,10 +384,22 @@ private fun validateSectionOrder(
     sections: List<SectionContent>,
     type: QuestionType,
     sourcePath: Path?,
+    usesFrontmatter: Boolean,
 ) {
-    require(sections.isNotEmpty()) { "Missing ## Type section" }
-    val typeIndex = sections.indexOfFirst { it.name == "Type" }
-    if (typeIndex != 0) {
+    require(sections.isNotEmpty()) {
+        if (usesFrontmatter) {
+            "Missing ## Prompt section"
+        } else {
+            "Missing ## Type section"
+        }
+    }
+    val typeIndex =
+        if (usesFrontmatter) {
+            -1
+        } else {
+            sections.indexOfFirst { it.name == "Type" }
+        }
+    if (!usesFrontmatter && typeIndex != 0) {
         val line = sections.firstOrNull()?.headingLine
         throw schemaError("First section must be ## Type", sourcePath, line)
     }
@@ -302,7 +407,7 @@ private fun validateSectionOrder(
     if (promptIndex == -1) {
         return
     }
-    if (promptIndex < typeIndex) {
+    if (!usesFrontmatter && promptIndex < typeIndex) {
         throw schemaError("## Prompt must appear after ## Type", sourcePath, sections[promptIndex].headingLine)
     }
     if (type == QuestionType.CHOICE) {
@@ -494,29 +599,38 @@ private class QtiBuilder(
                 builder.append("  </qti-response-declaration>\n")
             }
             QuestionType.CLOZE -> {
-                val blanks = question.prompt.clozeAnswers
+                val blanks = question.prompt.clozeBlanks
                 if (blanks.size == 1) {
                     builder.append(
-                        "  <qti-response-declaration identifier=\"RESPONSE\" cardinality=\"single\" base-type=\"string\">\n",
+                        "  <qti-response-declaration identifier=\"RESPONSE\" cardinality=\"single\" base-type=\"string\"",
                     )
-                    builder.append("    <qti-correct-response>\n")
-                    builder.append("      <qti-value>${escapeXml(blanks.first())}</qti-value>\n")
-                    builder.append("    </qti-correct-response>\n")
-                    builder.append("  </qti-response-declaration>\n")
+                    appendClozeDeclarationBody(builder, blanks.first())
                 } else {
                     blanks.forEachIndexed { index, blank ->
                         val identifier = "RESPONSE_${index + 1}"
                         builder.append(
-                            "  <qti-response-declaration identifier=\"$identifier\" cardinality=\"single\" base-type=\"string\">\n",
+                            "  <qti-response-declaration identifier=\"$identifier\" cardinality=\"single\" base-type=\"string\"",
                         )
-                        builder.append("    <qti-correct-response>\n")
-                        builder.append("      <qti-value>${escapeXml(blank)}</qti-value>\n")
-                        builder.append("    </qti-correct-response>\n")
-                        builder.append("  </qti-response-declaration>\n")
+                        appendClozeDeclarationBody(builder, blank)
                     }
                 }
             }
         }
+    }
+
+    private fun appendClozeDeclarationBody(
+        builder: StringBuilder,
+        blank: ClozeBlank,
+    ) {
+        if (blank.kind == ClozeBlankKind.REGEX) {
+            builder.append(" interpretation=\"regex\">\n")
+        } else {
+            builder.append(">\n")
+        }
+        builder.append("    <qti-correct-response>\n")
+        builder.append("      <qti-value>${escapeXml(blank.answer)}</qti-value>\n")
+        builder.append("    </qti-correct-response>\n")
+        builder.append("  </qti-response-declaration>\n")
     }
 
     private fun appendOutcomeDeclarations(builder: StringBuilder) {

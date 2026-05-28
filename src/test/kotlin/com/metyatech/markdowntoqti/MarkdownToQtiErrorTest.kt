@@ -216,6 +216,49 @@ class MarkdownToQtiErrorTest {
     }
 
     @Test
+    fun convertMarkdownToQti_requiresFrontmatterQuestionType() {
+        val markdown =
+            """
+            ---
+            time_budget_seconds: 60
+            ---
+            # Title
+
+            ## Prompt
+            Prompt.
+            """.trimIndent()
+
+        val exception =
+            assertThrows(IllegalArgumentException::class.java) {
+                convertMarkdownToQti(markdown, "missing-question-type")
+            }
+
+        assertTrue(exception.message?.contains("question_type") == true)
+    }
+
+    @Test
+    fun convertMarkdownToQti_requiresPositiveTimeBudget() {
+        val markdown =
+            """
+            ---
+            question_type: descriptive
+            time_budget_seconds: 0
+            ---
+            # Title
+
+            ## Prompt
+            Prompt.
+            """.trimIndent()
+
+        val exception =
+            assertThrows(IllegalArgumentException::class.java) {
+                convertMarkdownToQti(markdown, "bad-time-budget")
+            }
+
+        assertTrue(exception.message?.contains("time_budget_seconds") == true)
+    }
+
+    @Test
     fun convertMarkdownToQti_requiresPromptSection() {
         val markdown =
             """

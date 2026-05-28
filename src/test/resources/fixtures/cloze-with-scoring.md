@@ -1,7 +1,8 @@
+---
+question_type: cloze
+time_budget_seconds: 45
+---
 # Water Formula
-
-## Type
-cloze
 
 ## Prompt
 The chemical formula for water is {{H2O}}.

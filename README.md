@@ -28,18 +28,22 @@ If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 in
 
 ## CLI Usage
 
-Generate QTI XML from one or more Markdown files:
+Generate a QTI package from a manifest:
 
-- `gradle run --args="--input path/to/question.md --test-title \"Example Test\""`
+- `gradle run --args="--manifest path/to/manifest.yaml"`
 
 Recommended (avoids Gradle argument parsing issues, especially with non-ASCII titles):
 
 - `.\tools\gradle-java23.ps1 installDist`
+- `build/install/markdown-to-qti/bin/markdown-to-qti --manifest path/to/manifest.yaml`
+
+Single-file and multi-file conversion remains available for compatibility:
+
 - `build/install/markdown-to-qti/bin/markdown-to-qti --input path/to/question.md --test-title "Example Test"`
 
 Validate inputs without writing output:
 
-- `.\tools\gradle-java23.ps1 run --args="--input path/to/question.md --test-title \"Example Test\" --validate-only"`
+- `.\tools\gradle-java23.ps1 run --args="--manifest path/to/manifest.yaml --validate-only"`
 
 Non-ASCII test titles:
 
@@ -47,8 +51,9 @@ Non-ASCII test titles:
 
 Options:
 
+- `--manifest <path>`: Manifest YAML file. This is the canonical package input.
 - `--input <path>`: Markdown file or directory (directories scan for `*.md`). Use `-` for stdin.
-- `--test-title <title>`: Assessment test title (required).
+- `--test-title <title>`: Assessment test title for `--input` compatibility mode.
 - `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
 - `--validate-only`: Parse and validate XML without writing files.
 - `--dry-run`: Alias for `--validate-only`.
@@ -58,6 +63,9 @@ Options:
 
 ### CLI Details
 
+- `--manifest` writes item XML files and `assessment-test.qti.xml` using the manifest `title` and item order.
+- Manifest `time_limit_seconds` is emitted as the QTI test-part time limit. If omitted, the limit is the sum of item `time_budget_seconds` values.
+- `--manifest` cannot be combined with `--input`.
 - When `--input` is a directory, all `*.md` files inside it are processed.
 - When `--input` is `-`, it reads from stdin. Identifier defaults to `stdin`.
 - Output files are written as `<input-file>.qti.xml` under `--output-dir` or `<input-dir>/qti-out` when omitted.
@@ -72,6 +80,22 @@ Options:
 Prompt, options, and explanation content are parsed as CommonMark with GFM-style
 tables, strikethrough, and task lists enabled. The supported constructs are
 mapped to QTI elements as described in `docs/qti-mapping.md`.
+
+Question files use required YAML frontmatter:
+
+```markdown
+---
+question_type: descriptive
+time_budget_seconds: 60
+---
+# Question title
+
+## Prompt
+Question prompt.
+```
+
+Supported `question_type` values are `descriptive`, `choice`, and `cloze`.
+The old `## Type` section is deprecated and not part of the canonical format.
 
 Raw HTML blocks/inline HTML are not supported and will raise an error.
 

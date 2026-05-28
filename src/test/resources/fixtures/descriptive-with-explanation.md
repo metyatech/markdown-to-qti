@@ -1,7 +1,8 @@
+---
+question_type: descriptive
+time_budget_seconds: 60
+---
 # Gravity Basics
-
-## Type
-descriptive
 
 ## Prompt
 What is gravity?

@@ -1,7 +1,8 @@
+---
+question_type: descriptive
+time_budget_seconds: 180
+---
 # Markdown Features
-
-## Type
-descriptive
 
 ## Prompt
 This has **bold**, *italic*, ~~strike~~, and `code`. A [link](https://example.com "Example") is here.
