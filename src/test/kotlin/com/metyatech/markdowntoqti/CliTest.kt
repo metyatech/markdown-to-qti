@@ -384,7 +384,7 @@ class CliTest {
         assertEquals(0, exitCode)
         val assessmentXml = outputDir.resolve("assessment-test.qti.xml").readText()
         assertTrue(assessmentXml.contains("title=\"Manifest Exam\""))
-        assertTrue(assessmentXml.contains("<qti-time-limits max-time=\"120\"/>"))
+        assertTrue(assessmentXml.contains("<qti-time-limits max-time=\"PT120S\"/>"))
         assertTrue(
             assessmentXml.indexOf("identifier=\"second.q\"") <
                 assessmentXml.indexOf("identifier=\"first.q\""),
@@ -430,7 +430,7 @@ class CliTest {
 
         assertEquals(0, exitCode)
         val assessmentXml = outputDir.resolve("assessment-test.qti.xml").readText()
-        assertTrue(assessmentXml.contains("<qti-time-limits max-time=\"300\"/>"))
+        assertTrue(assessmentXml.contains("<qti-time-limits max-time=\"PT300S\"/>"))
     }
 }
 

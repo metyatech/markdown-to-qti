@@ -18,17 +18,18 @@ The resolved time limit is:
 - Otherwise the sum of each item `time_budget_seconds`.
 
 The resolved value is emitted as a `qti-time-limits` child of
-`qti-test-part`:
+`qti-test-part`. The canonical `max-time` representation is an ISO 8601
+duration in `PT{seconds}S` form:
 
 ```xml
 <qti-test-part identifier="part-1" navigation-mode="linear" submission-mode="individual">
-  <qti-time-limits max-time="1200"/>
+  <qti-time-limits max-time="PT1200S"/>
   ...
 </qti-test-part>
 ```
 
 Items remain `time-dependent="false"`. Item-level `time-dependent` is not used
-for package timing.
+for package timing and is independent from the test-part time limit.
 
 ## Assessment Items
 
