@@ -96,7 +96,13 @@ Required:
 Optional:
 
 - `time_limit_seconds`: positive integer. If omitted, the resolved time limit is
-  the sum of all item `time_budget_seconds` values.
+  the sum of all item `time_budget_seconds` values. The generated QTI package
+  emits the resolved limit as ISO 8601 duration text in `qti-time-limits`
+  `max-time`, for example `300` seconds becomes `PT300S`.
+
+The generated assessment items keep `time-dependent="false"`. That item
+attribute is not the package time limit; package timing is represented only by
+the assessment test `qti-time-limits` element.
 
 Removed:
 

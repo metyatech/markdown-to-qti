@@ -64,7 +64,7 @@ Options:
 ### CLI Details
 
 - `--manifest` writes item XML files and `assessment-test.qti.xml` using the manifest `title` and item order.
-- Manifest `time_limit_seconds` is emitted as the QTI test-part time limit. If omitted, the limit is the sum of item `time_budget_seconds` values.
+- Manifest `time_limit_seconds` is emitted as the QTI test-part time limit in canonical ISO 8601 duration form, for example `<qti-time-limits max-time="PT300S"/>`. If omitted, the limit is the sum of item `time_budget_seconds` values.
 - `--manifest` cannot be combined with `--input`.
 - When `--input` is a directory, all `*.md` files inside it are processed.
 - When `--input` is `-`, it reads from stdin. Identifier defaults to `stdin`.
