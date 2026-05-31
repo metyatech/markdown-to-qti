@@ -32,14 +32,14 @@ Generate a QTI package from a manifest:
 
 - `gradle run --args="--manifest path/to/manifest.yaml"`
 
-Recommended (avoids Gradle argument parsing issues, especially with non-ASCII titles):
+Recommended (avoids Gradle argument parsing issues and pins the CLI runtime to Java 23, even when the default `java` on PATH is older):
 
 - `.\tools\gradle-java23.ps1 installDist`
-- `build/install/markdown-to-qti/bin/markdown-to-qti --manifest path/to/manifest.yaml`
+- `.\tools\markdown-to-qti-java23.ps1 --manifest path/to/manifest.yaml --output-dir qti-out`
 
 Single-file and multi-file conversion remains available for compatibility:
 
-- `build/install/markdown-to-qti/bin/markdown-to-qti --input path/to/question.md --test-title "Example Test"`
+- `.\tools\markdown-to-qti-java23.ps1 --input path/to/question.md --test-title "Example Test"`
 
 Validate inputs without writing output:
 
@@ -47,7 +47,7 @@ Validate inputs without writing output:
 
 Non-ASCII test titles:
 
-- Prefer the installed CLI (`.\tools\gradle-java23.ps1 installDist` then `build/install/markdown-to-qti/bin/markdown-to-qti`) to avoid Gradle task parsing issues.
+- Prefer the Java 23 launcher (`.\tools\gradle-java23.ps1 installDist` then `.\tools\markdown-to-qti-java23.ps1`) to avoid Gradle task parsing issues and default-Java version mismatches.
 
 Options:
 
@@ -101,7 +101,7 @@ Raw HTML blocks/inline HTML are not supported and will raise an error.
 
 ## Configuration / Environment Variables
 
-None yet.
+- `JAVA_HOME_23`: Optional path to a JDK 23 installation. `tools/gradle-java23.ps1` and `tools/markdown-to-qti-java23.ps1` prefer this value when it is set. If it is unset, they use `.jdks/jdk-23` when available.
 
 ## Release / Deployment
 

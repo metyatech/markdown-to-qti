@@ -1,3 +1,4 @@
 {"id":"iGNMCJYM","description":"Rescue CLI verify task and standards tests from stale branch compliance/cli-standards-and-verify","stage":"committed","createdAt":"2026-04-13T00:03:07.959Z","updatedAt":"2026-04-13T00:05:33.076Z","committedEventId":"ncpty1wO5t6cFfpE"}
 {"id":"km2kaumD","description":"Implement manifest/frontmatter markdown-to-qti QTI support","stage":"committed","createdAt":"2026-05-29T05:02:56.591Z","updatedAt":"2026-05-30T04:11:45.618Z","committedEventId":"dYdZIcFdCCjR4udx"}
 {"id":"YBQ-49_Y","description":"Implement markdown-to-qti manifest/frontmatter common question format support","stage":"committed","createdAt":"2026-05-29T05:03:14.700Z","updatedAt":"2026-05-30T04:11:45.760Z","committedEventId":"xfqWqbUSZNY-UzPq"}
+{"id":"yqtkmdub","description":"Add Java 23 launcher wrapper for markdown-to-qti CLI","stage":"committed","createdAt":"2026-05-31T02:45:25.411Z","updatedAt":"2026-05-31T02:49:49.495Z","committedEventId":"XcH-SgVwMQZr9hdu"}
