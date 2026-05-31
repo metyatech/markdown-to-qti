@@ -28,8 +28,8 @@ Which number is prime?
 Required frontmatter:
 
 - `question_type`: one of `descriptive`, `choice`, or `cloze`.
-- `time_budget_seconds`: positive integer. Used to resolve the manifest time
-  limit when the manifest does not provide `time_limit_seconds`.
+- `time_budget_seconds`: positive integer seconds. Used to resolve the
+  manifest time limit when the manifest does not provide `time_limit_seconds`.
 
 Removed frontmatter/metadata:
 
@@ -95,14 +95,17 @@ Required:
 
 Optional:
 
-- `time_limit_seconds`: positive integer. If omitted, the resolved time limit is
-  the sum of all item `time_budget_seconds` values. The generated QTI package
-  emits the resolved limit as ISO 8601 duration text in `qti-time-limits`
-  `max-time`, for example `300` seconds becomes `PT300S`.
+- `time_limit_seconds`: positive integer seconds. If omitted, the resolved time
+  limit is the sum of all item `time_budget_seconds` values. The generated QTI
+  package emits the resolved limit as numeric seconds in `qti-time-limits`
+  `max-time`, for example `300` seconds becomes `max-time="300"`. Downstream
+  readers may accept ISO 8601 duration values for compatibility, but
+  `markdown-to-qti` canonical output is numeric seconds.
 
 The generated assessment items keep `time-dependent="false"`. That item
-attribute is not the package time limit; package timing is represented only by
-the assessment test `qti-time-limits` element.
+attribute describes whether scoring is time dependent; it is separate from the
+package time limit. Package timing is represented only by the assessment test
+`qti-time-limits` element.
 
 Removed:
 

@@ -13,8 +13,3 @@ internal fun escapeXml(value: String): String =
             }
         }
     }
-
-internal fun formatSecondsAsIsoDuration(seconds: Int): String {
-    require(seconds > 0) { "seconds must be positive" }
-    return "PT${seconds}S"
-}
