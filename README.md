@@ -34,8 +34,10 @@ Generate a QTI package from a manifest:
 
 Recommended (avoids Gradle argument parsing issues and pins the CLI runtime to Java 23, even when the default `java` on PATH is older):
 
-- `.\tools\gradle-java23.ps1 installDist`
 - `.\tools\markdown-to-qti-java23.ps1 --manifest path/to/manifest.yaml --output-dir qti-out`
+
+On first run, the launcher runs `installDist` automatically when the installed CLI is missing.
+It also prepares the local JDK 23 through `tools/gradle-java23.ps1` when neither `JAVA_HOME_23` nor `.jdks/jdk-23` is available.
 
 Single-file and multi-file conversion remains available for compatibility:
 
@@ -47,7 +49,7 @@ Validate inputs without writing output:
 
 Non-ASCII test titles:
 
-- Prefer the Java 23 launcher (`.\tools\gradle-java23.ps1 installDist` then `.\tools\markdown-to-qti-java23.ps1`) to avoid Gradle task parsing issues and default-Java version mismatches.
+- Prefer the Java 23 launcher (`.\tools\markdown-to-qti-java23.ps1`) to avoid Gradle task parsing issues and default-Java version mismatches.
 
 Options:
 
