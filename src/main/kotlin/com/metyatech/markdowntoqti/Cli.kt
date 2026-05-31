@@ -550,7 +550,7 @@ private fun buildAssessmentTest(
     )
     if (timeLimitSeconds != null) {
         builder.append("    <qti-time-limits max-time=\"")
-        builder.append(formatSecondsAsIsoDuration(timeLimitSeconds))
+        builder.append(timeLimitSeconds)
         builder.append("\"/>\n")
     }
     builder.append("    <qti-assessment-section identifier=\"section-1\" title=\"Section 1\" visible=\"true\">\n")
