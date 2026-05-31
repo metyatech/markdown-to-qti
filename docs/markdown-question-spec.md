@@ -97,10 +97,9 @@ Optional:
 
 - `time_limit_seconds`: positive integer seconds. If omitted, the resolved time
   limit is the sum of all item `time_budget_seconds` values. The generated QTI
-  package emits the resolved limit as numeric seconds in `qti-time-limits`
-  `max-time`, for example `300` seconds becomes `max-time="300"`. Downstream
-  readers may accept ISO 8601 duration values for compatibility, but
-  `markdown-to-qti` canonical output is numeric seconds.
+  package emits the resolved limit as the integer number of seconds in
+  `qti-time-limits` `max-time`, for example `300` seconds becomes
+  `max-time="300"`.
 
 The generated assessment items keep `time-dependent="false"`. That item
 attribute describes whether scoring is time dependent; it is separate from the

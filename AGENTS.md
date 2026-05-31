@@ -67,6 +67,31 @@ time_budget_seconds: 90
 - Keep educational quality rules in the education domain separate from this
   operational Markdown/QTI format rule.
 
+## Preparation and regular exam pairing
+
+- When creating a preparation question set for a regular exam, pair each
+  preparation question with the corresponding regular exam question one-to-one.
+  - Example: `1preparation/q1.q.md` corresponds to `2regular` question 1.
+  - Example: `1preparation/q2.q.md` corresponds to `2regular` question 2.
+  - When the user explicitly requests a different structure, follow the user's
+    requested structure.
+- When using a note such as `本試験では`, write it for the paired regular exam
+  question and clearly describe what changes in that paired regular exam
+  question.
+- Write preparation questions as surface-varied versions of the paired regular
+  exam questions when students may view preparation materials during the exam.
+  Change surface details such as values, strings, prompt text, conditions,
+  ranges, examples, or output text while keeping the same assessed skill.
+- Use exactly the same `## Scoring` text for each paired preparation and regular
+  exam question.
+- When the same scoring text needs to apply to both a preparation question and a
+  regular exam question, write the scoring text abstractly enough to apply to
+  both.
+  - Use wording such as `指定された値`, `指定された文字列`,
+    `要求通りの出力`, `下限値以上`, and `上限値以下`.
+- Put the question intent at the beginning of `## Explanation`.
+  - Example: `出題意図: ...`
+
 ## Manifest format
 
 - Manifests MUST contain `title` and `items`.
