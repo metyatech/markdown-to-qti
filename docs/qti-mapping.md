@@ -88,8 +88,18 @@ Raw HTML is rejected.
 
 ## Scoring And Explanation
 
-`## Scoring` maps to `qti-rubric-block view="scorer"` with one `qti-p` per
-criterion, formatted as `[<points>] <criterion>`.
+`## Scoring` maps to:
+
+- `qti-outcome-declaration identifier="SCORE"`, `cardinality="single"`,
+  `base-type="float"`.
+- `qti-outcome-declaration identifier="MAXSCORE"`, `cardinality="single"`,
+  `base-type="float"`, with a default `qti-value` equal to the sum of the
+  criterion point values.
+- `qti-rubric-block view="scorer"` with one `qti-p` per criterion, formatted as
+  `[<points>] <criterion>`.
+
+Scoring response-processing is deferred and is not emitted. Generated items do
+not set `SCORE` from `## Scoring` yet.
 
 `## Explanation` maps to post-response feedback:
 
