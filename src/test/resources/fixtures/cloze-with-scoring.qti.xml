@@ -10,6 +10,12 @@
       <qti-value>H2O</qti-value>
     </qti-correct-response>
   </qti-response-declaration>
+  <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float"/>
+  <qti-outcome-declaration identifier="MAXSCORE" cardinality="single" base-type="float">
+    <qti-default-value>
+      <qti-value>1</qti-value>
+    </qti-default-value>
+  </qti-outcome-declaration>
   <qti-item-body>
     <qti-p>The chemical formula for water is <qti-text-entry-interaction response-identifier="RESPONSE"/>.</qti-p>
     <qti-rubric-block view="scorer">

@@ -10,6 +10,12 @@
       <qti-value>CHOICE_2</qti-value>
     </qti-correct-response>
   </qti-response-declaration>
+  <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float"/>
+  <qti-outcome-declaration identifier="MAXSCORE" cardinality="single" base-type="float">
+    <qti-default-value>
+      <qti-value>3</qti-value>
+    </qti-default-value>
+  </qti-outcome-declaration>
   <qti-item-body>
     <qti-p>Which number is prime?</qti-p>
     <qti-choice-interaction response-identifier="RESPONSE" max-choices="1">

@@ -59,6 +59,35 @@ class MarkdownToQtiGoldenTest {
         assertTrue(actualXml.contains("interpretation=\"regex\""))
         assertTrue(actualXml.contains("<qti-value>[0-9]{3}</qti-value>"))
     }
+
+    @Test
+    fun convertMarkdownToQti_emitsDecimalMaxScoreWithoutTrailingZeros() {
+        val markdown =
+            """
+            ---
+            question_type: descriptive
+            time_budget_seconds: 60
+            ---
+            # Decimal Scoring
+
+            ## Prompt
+            Explain how chlorophyll supports photosynthesis.
+
+            ## Scoring
+            - 2: Identifies chlorophyll as a light-absorbing pigment
+            - 1.50: Mentions conversion of light energy to chemical energy
+            """.trimIndent()
+
+        val actualXml = convertMarkdownToQti(markdown, "decimal-scoring")
+        val scoreDeclaration =
+            """
+            <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float"/>
+            """.trimIndent()
+
+        assertTrue(actualXml.contains(scoreDeclaration))
+        assertTrue(actualXml.contains("<qti-value>3.5</qti-value>"))
+        assertTrue(!actualXml.contains("<qti-value>3.50</qti-value>"))
+    }
 }
 
 private fun readFixtureText(name: String): String {

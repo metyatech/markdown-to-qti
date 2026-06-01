@@ -634,12 +634,28 @@ private class QtiBuilder(
     }
 
     private fun appendOutcomeDeclarations(builder: StringBuilder) {
-        if (!hasExplanation()) {
+        if (question.scoring.isEmpty() && !hasExplanation()) {
             return
         }
-        builder.append(
-            "  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n",
-        )
+        if (question.scoring.isNotEmpty()) {
+            val maxScore = question.scoring.fold(BigDecimal.ZERO) { total, criterion -> total + criterion.points }
+            val maxScoreValue = maxScore.stripTrailingZeros().toPlainString()
+            builder.append(
+                "  <qti-outcome-declaration identifier=\"SCORE\" cardinality=\"single\" base-type=\"float\"/>\n",
+            )
+            builder.append(
+                "  <qti-outcome-declaration identifier=\"MAXSCORE\" cardinality=\"single\" base-type=\"float\">\n",
+            )
+            builder.append("    <qti-default-value>\n")
+            builder.append("      <qti-value>${escapeXml(maxScoreValue)}</qti-value>\n")
+            builder.append("    </qti-default-value>\n")
+            builder.append("  </qti-outcome-declaration>\n")
+        }
+        if (hasExplanation()) {
+            builder.append(
+                "  <qti-outcome-declaration identifier=\"FEEDBACK\" cardinality=\"single\" base-type=\"identifier\"/>\n",
+            )
+        }
     }
 
     private fun appendItemBody(builder: StringBuilder) {

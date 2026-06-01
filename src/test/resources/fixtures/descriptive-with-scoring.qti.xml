@@ -6,6 +6,12 @@
     adaptive="false"
     time-dependent="false">
   <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float"/>
+  <qti-outcome-declaration identifier="MAXSCORE" cardinality="single" base-type="float">
+    <qti-default-value>
+      <qti-value>3</qti-value>
+    </qti-default-value>
+  </qti-outcome-declaration>
   <qti-item-body>
     <qti-p>Explain the role of chlorophyll in photosynthesis.</qti-p>
     <qti-extended-text-interaction response-identifier="RESPONSE"/>
