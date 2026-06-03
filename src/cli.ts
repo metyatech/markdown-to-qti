@@ -378,13 +378,22 @@ function resolveInputs(
 
 function copyLocalImages(images: LocalImage[], outputDir: string): string[] {
   const copied: string[] = [];
+  const resolvedOutputDir = path.resolve(outputDir);
   for (const image of images) {
-    const destination = path.join(outputDir, image.outputRelativePath);
+    const destination = path.resolve(resolvedOutputDir, image.outputRelativePath);
+    if (!isPathInsideDirectory(destination, resolvedOutputDir)) {
+      throw new Error(`Image output path escapes output directory: ${image.outputRelativePath}`);
+    }
     mkdirSync(path.dirname(destination), { recursive: true });
     copyFileSync(image.sourcePath, destination);
     copied.push(destination);
   }
   return copied;
+}
+
+function isPathInsideDirectory(candidatePath: string, directoryPath: string): boolean {
+  const relative = path.relative(directoryPath, candidatePath);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function printUsage(stream: NodeJS.WritableStream): void {

@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { Writable } from "node:stream";
 import test from "node:test";
 
 import { runCli } from "../src/cli.js";
@@ -17,14 +18,11 @@ test("cli writes QTI output and assessment-test for direct input", async () => {
     const inputFile = path.join(tempDir, `${fixtureId}.md`);
     writeFileSync(inputFile, readFixture(`${fixtureId}.md`), "utf8");
 
-    const exitCode = runCli([
-      "--input",
-      inputFile,
-      "--test-title",
-      "Assessment Test",
-      "--output-dir",
-      outputDir
-    ]);
+    const exitCode = runCli(
+      ["--input", inputFile, "--test-title", "Assessment Test", "--output-dir", outputDir],
+      devNullStream(),
+      devNullStream()
+    );
 
     assert.equal(exitCode, 0);
     assert.equal(
@@ -123,14 +121,11 @@ test("cli copies local images to output directory", async () => {
       "utf8"
     );
 
-    const exitCode = runCli([
-      "--input",
-      inputFile,
-      "--test-title",
-      "Assessment Test",
-      "--output-dir",
-      outputDir
-    ]);
+    const exitCode = runCli(
+      ["--input", inputFile, "--test-title", "Assessment Test", "--output-dir", outputDir],
+      devNullStream(),
+      devNullStream()
+    );
 
     assert.equal(exitCode, 0);
     assert.equal(existsSync(path.join(outputDir, "images", "diagram.png")), true);
@@ -143,10 +138,61 @@ test("cli copies local images to output directory", async () => {
   }
 });
 
+test("cli rejects local image paths that escape the output directory", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    const sourceDir = path.join(tempDir, "source", "questions");
+    const sourceAssetsDir = path.join(tempDir, "source", "assets");
+    const outputDir = path.join(tempDir, "out");
+    await mkdir(sourceDir, { recursive: true });
+    await mkdir(sourceAssetsDir, { recursive: true });
+    writeFileSync(path.join(sourceAssetsDir, "pic.txt"), "secret", "utf8");
+    const escapedDestination = path.join(tempDir, "assets", "pic.txt");
+    const inputFile = path.join(sourceDir, "image-prompt.md");
+    writeFileSync(
+      inputFile,
+      [
+        "---",
+        "question_type: descriptive",
+        "time_budget_seconds: 60",
+        "---",
+        "# Image Prompt",
+        "",
+        "## Prompt",
+        "Do not copy this.",
+        "",
+        "![Alt text](../assets/pic.txt)",
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+
+    const exitCode = runCli(
+      ["--input", inputFile, "--test-title", "Assessment Test", "--output-dir", outputDir],
+      devNullStream(),
+      devNullStream()
+    );
+
+    assert.equal(exitCode, 1);
+    assert.equal(existsSync(escapedDestination), false);
+    assert.equal(existsSync(path.join(outputDir, "image-prompt.qti.xml")), false);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
 function readFixture(name: string): string {
   return readFileSync(path.join(fixturesDir, name), "utf8");
 }
 
 function normalizeXml(xml: string): string {
   return xml.replaceAll("\r\n", "\n").replaceAll(/^\s+</gmu, "<");
+}
+
+function devNullStream(): NodeJS.WritableStream {
+  return new Writable({
+    write(_chunk, _encoding, callback) {
+      callback();
+    }
+  });
 }

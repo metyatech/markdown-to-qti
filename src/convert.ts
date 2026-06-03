@@ -590,13 +590,31 @@ function resolveLocalImages(imageSources: string[], sourcePath: string): LocalIm
     if (path.isAbsolute(source)) {
       throw new Error(`Image path must be relative in ${path.resolve(sourcePath)}: ${source}`);
     }
-    const resolvedSource = path.normalize(path.resolve(sourceDir, source));
+    const outputRelativePath = safeLocalImagePath(source, sourcePath);
+    const resolvedSource = path.resolve(sourceDir, outputRelativePath);
     if (!existsSync(resolvedSource) || !statSync(resolvedSource).isFile()) {
       throw new Error(`Image file not found in ${path.resolve(sourcePath)}: ${source}`);
     }
-    result.push({ sourcePath: resolvedSource, outputRelativePath: path.normalize(source) });
+    result.push({ sourcePath: resolvedSource, outputRelativePath });
   }
   return result;
+}
+
+function safeLocalImagePath(source: string, sourcePath: string): string {
+  const normalized = path.normalize(source);
+  if (normalized === "." || normalized === "") {
+    throw new Error(`Image path must not be empty in ${path.resolve(sourcePath)}: ${source}`);
+  }
+  if (
+    path.isAbsolute(normalized) ||
+    normalized === ".." ||
+    normalized.startsWith(`..${path.sep}`)
+  ) {
+    throw new Error(
+      `Image path must stay inside the question directory in ${path.resolve(sourcePath)}: ${source}`
+    );
+  }
+  return normalized;
 }
 
 function trimQuotes(value: string): string {
