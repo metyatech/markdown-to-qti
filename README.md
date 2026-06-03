@@ -2,86 +2,103 @@
 
 ## Overview
 
-This repository will implement a tool that converts Markdown question files into
-IMS QTI 3.0. The authoring format is defined in:
+`markdown-to-qti` is an npm-installable TypeScript CLI that converts Markdown
+question files into IMS QTI 3.0 packages. The authoring format is defined in:
 
 - [docs/markdown-question-spec.md](docs/markdown-question-spec.md)
 - [docs/qti-mapping.md](docs/qti-mapping.md)
 
+## Supported environment
+
+- Node.js 20.10 or newer
+- npm
+
+Java, Gradle, and a JDK are not required.
+
 ## Setup
 
-- Install Java 23. Use `tools/gradle-java23.ps1` (it auto-downloads JDK 23 if missing), or set `JAVA_HOME_23` to an existing JDK 23 installation.
-- This project uses the Gradle wrapper. You can use `./gradlew` (or `gradlew.bat` on Windows) to run Gradle tasks.
+Install dependencies:
 
-## Toolchain
+```powershell
+npm install
+```
 
-If you need to pin Gradle to a specific JDK, set `JAVA_HOME_23` to the JDK 23 installation directory.
+## Development commands
 
-## Development Commands
+- Build: `npm run build`
+- Test: `npm test`
+- Lint: `npm run lint`
+- Format: `npm run format`
+- Format check: `npm run format:check`
+- Verify: `npm run verify`
 
-- Build: `.\\tools\\gradle-java23.ps1 build`
-- Test: `.\\tools\\gradle-java23.ps1 test`
-- Lint: `.\\tools\\gradle-java23.ps1 detekt`
-- Format: `.\\tools\\gradle-java23.ps1 spotlessApply`
-- Format check: `.\\tools\\gradle-java23.ps1 spotlessCheck`
-- Verify: `.\\tools\\gradle-java23.ps1 verify`
-
-## CLI Usage
+## CLI usage
 
 Generate a QTI package from a manifest:
 
-- `gradle run --args="--manifest path/to/manifest.yaml"`
-
-Recommended (avoids Gradle argument parsing issues and pins the CLI runtime to Java 23, even when the default `java` on PATH is older):
-
-- `.\tools\markdown-to-qti-java23.ps1 --manifest path/to/manifest.yaml --output-dir qti-out`
-
-On first run, the launcher runs `installDist` automatically when the installed CLI is missing.
-It also prepares the local JDK 23 through `tools/gradle-java23.ps1` when neither `JAVA_HOME_23` nor `.jdks/jdk-23` is available.
+```powershell
+npx markdown-to-qti --manifest path/to/manifest.yaml --output-dir qti-out
+```
 
 Single-file and multi-file conversion remains available for compatibility:
 
-- `.\tools\markdown-to-qti-java23.ps1 --input path/to/question.md --test-title "Example Test"`
+```powershell
+npx markdown-to-qti --input path/to/question.md --test-title "Example Test"
+```
 
 Validate inputs without writing output:
 
-- `.\tools\gradle-java23.ps1 run --args="--manifest path/to/manifest.yaml --validate-only"`
+```powershell
+npx markdown-to-qti --manifest path/to/manifest.yaml --validate-only
+```
 
-Non-ASCII test titles:
+Show command help:
 
-- Prefer the Java 23 launcher (`.\tools\markdown-to-qti-java23.ps1`) to avoid Gradle task parsing issues and default-Java version mismatches.
+```powershell
+npx markdown-to-qti --help
+```
 
 Options:
 
 - `--manifest <path>`: Manifest YAML file. This is the canonical package input.
-- `--input <path>`: Markdown file or directory (directories scan for `*.md`). Use `-` for stdin.
+- `--input <path>`: Markdown file or directory. Directories scan for `*.md`.
+  Use `-` for stdin.
 - `--test-title <title>`: Assessment test title for `--input` compatibility mode.
-- `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to `qti-out` under each input file directory.
+- `--output-dir <dir>`: Output directory for `.qti.xml` files. Defaults to
+  `qti-out` under each input file directory.
 - `--validate-only`: Parse and validate XML without writing files.
 - `--dry-run`: Alias for `--validate-only`.
 - `--verbose`: Log processed files.
-- `--json`: Output machine-readable JSON summary to stdout.
+- `--json`: Output a machine-readable JSON summary to stdout.
 - `--version`, `-V`: Show version.
+- `--help`, `-h`: Show help.
 
-### CLI Details
+### CLI details
 
-- `--manifest` writes item XML files and `assessment-test.qti.xml` using the manifest `title` and item order.
-- Manifest `time_limit_seconds` is authored as an integer number of seconds and is emitted as the QTI test-part time limit in numeric form, for example `<qti-time-limits max-time="300"/>`. If omitted, the limit is the sum of item `time_budget_seconds` integer seconds values and is emitted with the same numeric representation.
+- `--manifest` writes item XML files and `assessment-test.qti.xml` using the
+  manifest `title` and item order.
+- Manifest `time_limit_seconds` is authored as an integer number of seconds and
+  is emitted as the QTI test-part time limit, for example
+  `<qti-time-limits max-time="300"/>`. If omitted, the limit is the sum of item
+  `time_budget_seconds` values.
 - `--manifest` cannot be combined with `--input`.
 - When `--input` is a directory, all `*.md` files inside it are processed.
-- When `--input` is `-`, it reads from stdin. Identifier defaults to `stdin`.
-- Output files are written as `<input-file>.qti.xml` under `--output-dir` or `<input-dir>/qti-out` when omitted.
-- An `assessment-test.qti.xml` file is written alongside outputs, referencing all generated items in that directory.
-- `--validate-only` (or `--dry-run`) performs XML well-formedness checks without writing files.
-- Local image files referenced in Markdown are copied to the output directory, preserving
-  the relative paths.
+- When `--input` is `-`, the CLI reads from stdin. The identifier defaults to
+  `stdin`.
+- Output files are written as `<input-file>.qti.xml` under `--output-dir`, or
+  under `<input-dir>/qti-out` when omitted.
+- An `assessment-test.qti.xml` file is written alongside outputs, referencing all
+  generated items in that directory.
+- `--validate-only` and `--dry-run` parse inputs without writing files.
+- Local image files referenced in Markdown are copied to the output directory,
+  preserving relative paths.
 - Errors include the input path when possible and return a non-zero exit code.
 
-## Markdown Support
+## Markdown support
 
 Prompt, options, and explanation content are parsed as CommonMark with GFM-style
 tables, strikethrough, and task lists enabled. The supported constructs are
-mapped to QTI elements as described in `docs/qti-mapping.md`.
+mapped to QTI elements as described in [QTI Mapping](docs/qti-mapping.md).
 
 Question files use required YAML frontmatter:
 
@@ -90,21 +107,25 @@ Question files use required YAML frontmatter:
 question_type: descriptive
 time_budget_seconds: 60
 ---
+
 # Question title
 
 ## Prompt
+
 Question prompt.
 ```
 
-Supported `question_type` values are `descriptive`, `choice`, and `cloze`.
-The old `## Type` section is deprecated and not part of the canonical format.
+Supported `question_type` values are `descriptive`, `choice`, and `cloze`. The
+old `## Type` section is deprecated and not part of the canonical format.
 
-Raw HTML blocks/inline HTML are not supported and will raise an error.
+Raw HTML blocks and inline HTML are not supported and raise an error.
 
-## Configuration / Environment Variables
+## Configuration and environment variables
 
-- `JAVA_HOME_23`: Optional path to a JDK 23 installation. `tools/gradle-java23.ps1` and `tools/markdown-to-qti-java23.ps1` prefer this value when it is set. If it is unset, they use `.jdks/jdk-23` when available.
+No configuration or environment variables are required.
 
-## Release / Deployment
+## Release and deployment
 
-Not applicable yet.
+The package is published as `@metyatech/markdown-to-qti` with the
+`markdown-to-qti` bin. Before publishing, run `npm run verify` and ensure the
+package version matches the release tag.

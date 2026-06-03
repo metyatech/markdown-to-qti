@@ -4,3 +4,4 @@
 {"id":"yqtkmdub","description":"Add Java 23 launcher wrapper for markdown-to-qti CLI","stage":"committed","createdAt":"2026-05-31T02:45:25.411Z","updatedAt":"2026-05-31T02:49:49.495Z","committedEventId":"XcH-SgVwMQZr9hdu"}
 {"id":"OcRtWInW","description":"Auto-bootstrap markdown-to-qti installed CLI from launcher","stage":"committed","createdAt":"2026-05-31T02:59:55.065Z","updatedAt":"2026-05-31T03:05:53.298Z","committedEventId":"y0oJpU3b3GWC3Zjv"}
 {"id":"_ZjJ3wHP","description":"Implement SCORE and MAXSCORE outcome declarations from Scoring totals","stage":"committed","createdAt":"2026-06-01T07:39:53.928Z","updatedAt":"2026-06-01T08:07:58.254Z","committedEventId":"x4IdtVg__F19gqua"}
+{"id":"8D92btnz","description":"Port markdown-to-qti from Kotlin Gradle to TypeScript npm CLI for install-only course-exams publishing","stage":"committed","createdAt":"2026-06-03T12:49:21.158Z","updatedAt":"2026-06-03T14:56:27.395Z","committedEventId":"e51k8kBjAhGqzGGd"}

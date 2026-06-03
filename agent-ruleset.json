@@ -1,10 +1,6 @@
 {
   "source": "github:metyatech/agent-rules",
-  "domains": [
-    "exam"
-  ],
-  "extra": [
-    "agent-rules-local/rules/markdown-to-qti.md"
-  ],
+  "domains": ["exam"],
+  "extra": ["agent-rules-local/rules/markdown-to-qti.md"],
   "output": "AGENTS.md"
 }

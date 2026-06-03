@@ -1,14 +1,15 @@
-# Project Rules: markdown-to-qti (Kotlin)
+# Project Rules: markdown-to-qti
 
 ## Scope
 
-- This repository will implement a tool that converts Markdown content into IMS QTI 3.0.
+- This repository MUST implement an npm-installable TypeScript CLI that converts Markdown content into IMS QTI 3.0.
 - Prioritize correctness of QTI 3.0 output and a clean internal data model.
 
-## Kotlin / Gradle conventions
+## TypeScript / npm conventions
 
-- Prefer Kotlin (JVM) with Gradle.
-- Keep the entrypoint small; put logic into testable functions/classes.
+- Use TypeScript with a Node.js ESM npm package and expose the `markdown-to-qti` bin through `package.json`.
+- Do not require Java, Gradle, a JDK, or JVM launchers for normal install or runtime use.
+- Keep the CLI entrypoint small; put conversion logic into testable modules.
 - Favor immutable data, explicit types at boundaries, and clear error types.
 
 ## QTI 3.0 output rules
@@ -29,6 +30,7 @@
 - Add unit tests for parsing/mapping rules.
 - Add golden tests for QTI XML output (compare normalized XML).
 - Include a few end-to-end fixtures (Markdown input -> QTI output) under a dedicated test folder.
+- Golden tests MUST preserve parity with the historical Kotlin fixture outputs unless an intentional format change is documented.
 
 ## CLI / UX
 
@@ -37,4 +39,5 @@
   - output directory
   - validation mode (validate-only)
   - verbose logging
+- Provide `--help`/`-h`, `--version`/`-V`, and `--json` for first-run discoverability and machine-readable use.
 - Error messages must include the source location when possible (file + line/column).

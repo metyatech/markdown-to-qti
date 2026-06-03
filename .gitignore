@@ -1,11 +1,12 @@
-.gradle/
-build/
-out/
+node_modules/
+dist/
 bin/
+*.tsbuildinfo
+build/
+.gradle/
+.jdks/
 .kotlin/
 .vscode/
 .idea/
 *.iml
-gradle.properties
-.jdks/
 .threads.jsonl

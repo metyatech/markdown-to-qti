@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD025 -->
 # Tool Rules (compose-agentsmd)
 
-- **Session gate**: before responding to ANY user message, run `compose-agentsmd` from the project root. AGENTS.md contains the rules you operate under; stale rules cause rule violations. If you discover you skipped this step mid-session, stop, run it immediately, re-read the diff, and adjust your behavior before continuing.
+- **Session gate**: before starting substantive work for each externally supplied human/operator instruction, run `compose-agentsmd` once from the project root. AGENTS.md contains the rules you operate under; stale rules cause rule violations. Do not rerun this gate within the same instruction after tool results, retries, generated continuations, or resumed execution. If you discover you skipped this step mid-session, stop, run it immediately, re-read the diff, and adjust your behavior before continuing.
 - `compose-agentsmd` intentionally regenerates `AGENTS.md`; any resulting `AGENTS.md` diff is expected and must not be treated as an unexpected external change.
 - If `compose-agentsmd` is not available, run it via `npx compose-agentsmd`. If `npx` is unavailable or cannot fetch the package, install it via npm with an environment-appropriate method such as `npm install -g compose-agentsmd` when global installs are permitted, or a user-local npm prefix when global installs are not permitted.
 - To update shared/global rules, use `compose-agentsmd edit-rules` to locate the writable rules workspace, make changes only in that workspace, then run `compose-agentsmd apply-rules` (do not manually clone or edit the rules source repo outside this workflow).
@@ -115,17 +115,18 @@ time_budget_seconds: 90
 
 Source: agent-rules-local/rules/markdown-to-qti.md
 
-# Project Rules: markdown-to-qti (Kotlin)
+# Project Rules: markdown-to-qti
 
 ## Scope
 
-- This repository will implement a tool that converts Markdown content into IMS QTI 3.0.
+- This repository MUST implement an npm-installable TypeScript CLI that converts Markdown content into IMS QTI 3.0.
 - Prioritize correctness of QTI 3.0 output and a clean internal data model.
 
-## Kotlin / Gradle conventions
+## TypeScript / npm conventions
 
-- Prefer Kotlin (JVM) with Gradle.
-- Keep the entrypoint small; put logic into testable functions/classes.
+- Use TypeScript with a Node.js ESM npm package and expose the `markdown-to-qti` bin through `package.json`.
+- Do not require Java, Gradle, a JDK, or JVM launchers for normal install or runtime use.
+- Keep the CLI entrypoint small; put conversion logic into testable modules.
 - Favor immutable data, explicit types at boundaries, and clear error types.
 
 ## QTI 3.0 output rules
@@ -146,6 +147,7 @@ Source: agent-rules-local/rules/markdown-to-qti.md
 - Add unit tests for parsing/mapping rules.
 - Add golden tests for QTI XML output (compare normalized XML).
 - Include a few end-to-end fixtures (Markdown input -> QTI output) under a dedicated test folder.
+- Golden tests MUST preserve parity with the historical Kotlin fixture outputs unless an intentional format change is documented.
 
 ## CLI / UX
 
@@ -154,4 +156,5 @@ Source: agent-rules-local/rules/markdown-to-qti.md
   - output directory
   - validation mode (validate-only)
   - verbose logging
+- Provide `--help`/`-h`, `--version`/`-V`, and `--json` for first-run discoverability and machine-readable use.
 - Error messages must include the source location when possible (file + line/column).

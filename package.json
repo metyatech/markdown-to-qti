@@ -1,0 +1,65 @@
+{
+  "name": "@metyatech/markdown-to-qti",
+  "version": "0.1.0",
+  "description": "Convert authored Markdown question content to IMS QTI 3.0 XML packages",
+  "keywords": [
+    "qti",
+    "markdown",
+    "assessment",
+    "imsqti",
+    "education"
+  ],
+  "license": "MIT",
+  "author": "metyatech",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metyatech/markdown-to-qti.git"
+  },
+  "homepage": "https://github.com/metyatech/markdown-to-qti#readme",
+  "bugs": {
+    "url": "https://github.com/metyatech/markdown-to-qti/issues"
+  },
+  "type": "module",
+  "bin": {
+    "markdown-to-qti": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "tsc -p tsconfig.json",
+    "test": "node --test \"dist/test/**/*.js\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run format:check && npm run lint && npm run test",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "mdast-util-from-markdown": "^2.0.2",
+    "mdast-util-gfm-strikethrough": "^2.0.0",
+    "mdast-util-gfm-table": "^2.0.0",
+    "mdast-util-gfm-task-list-item": "^2.0.0",
+    "micromark-extension-gfm-strikethrough": "^2.1.0",
+    "micromark-extension-gfm-table": "^2.1.1",
+    "micromark-extension-gfm-task-list-item": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^22.9.0",
+    "eslint": "^9.14.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0"
+  }
+}
