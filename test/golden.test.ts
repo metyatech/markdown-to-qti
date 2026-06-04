@@ -21,6 +21,48 @@ for (const markdownFixture of markdownFixtures) {
   });
 }
 
+test("rejects non-comment raw HTML blocks", () => {
+  assert.throws(
+    () =>
+      convertMarkdownToQti(
+        [
+          "---",
+          "question_type: descriptive",
+          "time_budget_seconds: 60",
+          "---",
+          "# Raw HTML",
+          "",
+          "## Prompt",
+          "<div>Raw HTML is still unsupported.</div>",
+          ""
+        ].join("\n"),
+        "raw-html"
+      ),
+    /Raw HTML blocks are not supported in QTI output/u
+  );
+});
+
+test("rejects non-comment raw inline HTML", () => {
+  assert.throws(
+    () =>
+      convertMarkdownToQti(
+        [
+          "---",
+          "question_type: descriptive",
+          "time_budget_seconds: 60",
+          "---",
+          "# Raw Inline HTML",
+          "",
+          "## Prompt",
+          "This has <span>raw HTML</span> inline.",
+          ""
+        ].join("\n"),
+        "raw-inline-html"
+      ),
+    /Raw HTML is not supported in QTI output/u
+  );
+});
+
 function normalizeXml(xml: string): string {
   return xml.replaceAll("\r\n", "\n").replaceAll(/^\s+</gmu, "<");
 }

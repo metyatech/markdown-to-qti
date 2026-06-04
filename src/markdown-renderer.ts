@@ -7,6 +7,7 @@ import { gfmTable } from "micromark-extension-gfm-table";
 import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item";
 import type {
   AlignType,
+  Html,
   Image,
   Link,
   List,
@@ -202,6 +203,9 @@ export class MarkdownQtiRenderer {
       case "thematicBreak":
         return "<qti-hr/>\n";
       case "html":
+        if (isHtmlComment(node)) {
+          return "";
+        }
         throw unsupported("Raw HTML blocks are not supported in QTI output", context, node);
       case "table":
         return this.renderTable(node, context, state);
@@ -407,6 +411,9 @@ export class MarkdownQtiRenderer {
       case "break":
         return "<qti-br/>";
       case "html":
+        if (isHtmlComment(node)) {
+          return "";
+        }
         throw unsupported("Raw HTML is not supported in QTI output", context, node);
       default:
         throw unsupported(`Unsupported inline element: ${node.type}`, context, node);
@@ -486,6 +493,14 @@ function containsNestedList(node: unknown): boolean {
     return true;
   }
   return childrenOf(node).some((child) => containsNestedList(child));
+}
+
+function isHtmlComment(node: Html): boolean {
+  const trimmed = node.value.trim();
+  if (!trimmed.startsWith("<!--") || !trimmed.endsWith("-->")) {
+    return false;
+  }
+  return !trimmed.slice(4, -3).includes("--");
 }
 
 function responseIdsFor(blanks: ClozeBlank[]): string[] {

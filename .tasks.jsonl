@@ -5,3 +5,4 @@
 {"id":"OcRtWInW","description":"Auto-bootstrap markdown-to-qti installed CLI from launcher","stage":"committed","createdAt":"2026-05-31T02:59:55.065Z","updatedAt":"2026-05-31T03:05:53.298Z","committedEventId":"y0oJpU3b3GWC3Zjv"}
 {"id":"_ZjJ3wHP","description":"Implement SCORE and MAXSCORE outcome declarations from Scoring totals","stage":"committed","createdAt":"2026-06-01T07:39:53.928Z","updatedAt":"2026-06-01T08:07:58.254Z","committedEventId":"x4IdtVg__F19gqua"}
 {"id":"8D92btnz","description":"Port markdown-to-qti from Kotlin Gradle to TypeScript npm CLI for install-only course-exams publishing","stage":"committed","createdAt":"2026-06-03T12:49:21.158Z","updatedAt":"2026-06-03T14:56:27.395Z","committedEventId":"e51k8kBjAhGqzGGd"}
+{"id":"dPjnyaR9","description":"Allow HTML comments as source-only notes in markdown-to-qti","stage":"committed","createdAt":"2026-06-04T08:24:37.150Z","updatedAt":"2026-06-04T08:31:03.307Z","committedEventId":"RzKs9J3QUK6fIqDY"}

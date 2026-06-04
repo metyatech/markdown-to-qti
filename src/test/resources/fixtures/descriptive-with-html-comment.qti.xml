@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qti-assessment-item
+    xmlns="http://www.imsglobal.org/xsd/imsqti_v3p0"
+    identifier="descriptive-with-html-comment"
+    title="HTML Comment"
+    adaptive="false"
+    time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
+  <qti-outcome-declaration identifier="FEEDBACK" cardinality="single" base-type="identifier"/>
+  <qti-item-body>
+    <qti-p>Visible prompt.</qti-p>
+    <qti-p>Visible continuation.</qti-p>
+    <qti-p>Visible inline.</qti-p>
+    <qti-extended-text-interaction response-identifier="RESPONSE"/>
+  </qti-item-body>
+  <qti-response-processing>
+    <qti-set-outcome-value identifier="FEEDBACK">
+      <qti-base-value base-type="identifier">EXPLANATION</qti-base-value>
+    </qti-set-outcome-value>
+  </qti-response-processing>
+  <qti-modal-feedback outcome-identifier="FEEDBACK" identifier="EXPLANATION" show-hide="show">
+    <qti-content-body>
+    <qti-p>Visible explanation.</qti-p>
+    </qti-content-body>
+  </qti-modal-feedback>
+</qti-assessment-item>

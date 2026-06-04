@@ -59,7 +59,8 @@ The prompt is rendered in `qti-item-body`.
 - Images -> `qti-img`
 - Horizontal rules -> `qti-hr`
 
-Raw HTML is rejected.
+HTML comments are treated as source-only authoring notes and omitted from QTI.
+Other raw HTML is rejected.
 
 ## Question Types
 

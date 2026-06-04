@@ -122,6 +122,7 @@ as CommonMark with these extensions:
 - GFM tables
 - GFM task lists
 
-Raw HTML blocks and inline HTML are rejected. Local images must use paths
-relative to the Markdown file. During generation, local images are copied to the
-output directory preserving relative paths.
+HTML comments are allowed as source-only authoring notes and are omitted from
+generated QTI. Other raw HTML blocks and inline HTML are rejected. Local images
+must use paths relative to the Markdown file. During generation, local images
+are copied to the output directory preserving relative paths.

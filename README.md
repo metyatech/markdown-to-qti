@@ -118,7 +118,9 @@ Question prompt.
 Supported `question_type` values are `descriptive`, `choice`, and `cloze`. The
 old `## Type` section is deprecated and not part of the canonical format.
 
-Raw HTML blocks and inline HTML are not supported and raise an error.
+HTML comments are allowed as source-only authoring notes and omitted from
+generated QTI. Other raw HTML blocks and inline HTML are not supported and raise
+an error.
 
 ## Configuration and environment variables
 
