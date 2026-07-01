@@ -13,5 +13,5 @@ Which number is prime?
 - [ ] 21
 
 ## Scoring
-- 2: Selects the only prime number
-- 1: Avoids selecting a composite number
+- Selects the only prime number
+- Avoids selecting a composite number

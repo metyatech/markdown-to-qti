@@ -3,9 +3,17 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { convertMarkdownToQti } from "../src/convert.js";
+import { convertMarkdownToQti, convertMarkdownToQtiWithAssets } from "../src/convert.js";
 
 const fixturesDir = path.resolve("src/test/resources/fixtures");
+
+// Fixtures with a ## Scoring section need manifest-supplied points; the map
+// captures the points the QTI golden output was generated with.
+const scoringPointsByFixture: Record<string, number[]> = {
+  "choice-with-scoring": [2, 1],
+  "cloze-with-scoring": [1],
+  "descriptive-with-scoring": [2, 1]
+};
 
 const markdownFixtures = readdirSync(fixturesDir)
   .filter((name) => name.endsWith(".md"))
@@ -14,10 +22,18 @@ const markdownFixtures = readdirSync(fixturesDir)
 for (const markdownFixture of markdownFixtures) {
   test(`matches Kotlin golden fixture: ${markdownFixture}`, () => {
     const fixtureId = markdownFixture.slice(0, -".md".length);
-    const markdown = readFileSync(path.join(fixturesDir, markdownFixture), "utf8");
+    const markdownPath = path.join(fixturesDir, markdownFixture);
+    const markdown = readFileSync(markdownPath, "utf8");
     const expected = readFileSync(path.join(fixturesDir, `${fixtureId}.qti.xml`), "utf8");
 
-    assert.equal(normalizeXml(convertMarkdownToQti(markdown, fixtureId)), normalizeXml(expected));
+    const scoringPoints = scoringPointsByFixture[fixtureId];
+    const actual =
+      scoringPoints === undefined
+        ? convertMarkdownToQti(markdown, fixtureId)
+        : convertMarkdownToQtiWithAssets(markdown, fixtureId, markdownPath, { scoringPoints })
+            .qtiXml;
+
+    assert.equal(normalizeXml(actual), normalizeXml(expected));
   });
 }
 

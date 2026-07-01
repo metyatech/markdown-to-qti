@@ -18,6 +18,14 @@ export interface ScoringCriterion {
   criterionXml: string;
 }
 
+export interface ParsedScoringCriterion {
+  criterionXml: string;
+}
+
+export interface QtiConversionOptions {
+  scoringPoints?: number[] | undefined;
+}
+
 export interface LocalImage {
   sourcePath: string;
   outputRelativePath: string;
@@ -68,15 +76,18 @@ const MAX_LEADING_SPACES = 3;
 
 export function convertMarkdownToQti(markdown: string, fixtureId: string): string {
   const parsed = parseMarkdownQuestion(markdown, fixtureId, null);
+  parsed.question.scoring = combineScoring(parsed.parsedScoring, undefined, null);
   return buildQti(parsed.question);
 }
 
 export function convertMarkdownToQtiWithAssets(
   markdown: string,
   fixtureId: string,
-  sourcePath: string
+  sourcePath: string,
+  options: QtiConversionOptions = {}
 ): QtiConversionResult {
   const parsed = parseMarkdownQuestion(markdown, fixtureId, sourcePath);
+  parsed.question.scoring = combineScoring(parsed.parsedScoring, options.scoringPoints, sourcePath);
   const localImages = resolveLocalImages(parsed.imageSources, sourcePath);
   return {
     qtiXml: buildQti(parsed.question),
@@ -85,9 +96,48 @@ export function convertMarkdownToQtiWithAssets(
   };
 }
 
+function combineScoring(
+  parsedScoring: ParsedScoringCriterion[],
+  scoringPoints: number[] | undefined,
+  sourcePath: string | null
+): ScoringCriterion[] {
+  if (parsedScoring.length === 0 && scoringPoints === undefined) {
+    return [];
+  }
+  if (parsedScoring.length === 0) {
+    throw schemaError(
+      "scoring criteria absent in question, but manifest item specifies points",
+      sourcePath,
+      null
+    );
+  }
+  if (scoringPoints === undefined) {
+    throw schemaError(
+      "scoring criteria present, but manifest item points missing",
+      sourcePath,
+      null
+    );
+  }
+  if (parsedScoring.length !== scoringPoints.length) {
+    throw schemaError(
+      `scoring criteria count (${parsedScoring.length}) does not match manifest points count (${scoringPoints.length})`,
+      sourcePath,
+      null
+    );
+  }
+  return parsedScoring.map((criterion, index) => {
+    const value = scoringPoints[index];
+    if (value === undefined || !Number.isInteger(value) || value <= 0) {
+      throw schemaError("manifest points must be positive integers", sourcePath, null);
+    }
+    return { points: parseDecimal(String(value)), criterionXml: criterion.criterionXml };
+  });
+}
+
 interface MarkdownParseResult {
   question: MarkdownQuestion;
   imageSources: string[];
+  parsedScoring: ParsedScoringCriterion[];
 }
 
 function parseMarkdownQuestion(
@@ -224,7 +274,7 @@ function parseMarkdownQuestion(
   }
 
   const scoringSection = sectionsByName.get("Scoring");
-  const scoring =
+  const parsedScoring =
     scoringSection === undefined ? [] : parseScoringSection(scoringSection, renderer, sourcePath);
 
   const optionsSection = sectionsByName.get("Options");
@@ -271,10 +321,10 @@ function parseMarkdownQuestion(
     prompt: promptRender,
     explanation: explanationRender,
     options,
-    scoring
+    scoring: []
   };
 
-  return { question, imageSources: [...imageSources] };
+  return { question, imageSources: [...imageSources], parsedScoring };
 }
 
 function parseQuestionFrontmatter(lines: string[], sourcePath: string | null): QuestionFrontmatter {
@@ -396,9 +446,9 @@ export function parseScoringSection(
   section: SectionContent,
   renderer: MarkdownQtiRenderer,
   sourcePath: string | null
-): ScoringCriterion[] {
-  const criteria: ScoringCriterion[] = [];
-  const pattern = /^([0-9]+(?:\.[0-9]+)?):\s*(.*)$/u;
+): ParsedScoringCriterion[] {
+  const criteria: ParsedScoringCriterion[] = [];
+  const inlinePointsPattern = /^[0-9]+(?:\.[0-9]+)?:/u;
   section.lines.forEach((rawLine, index) => {
     if (rawLine.trim() === "") {
       return;
@@ -412,31 +462,33 @@ export function parseScoringSection(
     }
     if (!rawLine.startsWith("- ")) {
       throw schemaError(
-        "Scoring section must be a Markdown list with '- <points>: <criterion>' items",
+        "Scoring section must be a Markdown list with '- <criterion>' items",
         sourcePath,
         section.startLine + index
       );
     }
     const content = rawLine.slice(2).trim();
-    const match = pattern.exec(content);
-    if (match === null) {
-      throw new Error(`Invalid scoring points in line: ${rawLine}`);
+    if (content === "") {
+      throw schemaError(
+        "Scoring criterion must not be empty",
+        sourcePath,
+        section.startLine + index
+      );
     }
-    const points = match[1] ?? "";
-    const criterion = (match[2] ?? "").trim();
-    if (criterion === "") {
-      throw new Error(`Scoring criterion must not be empty: ${rawLine}`);
+    if (inlinePointsPattern.test(content)) {
+      throw schemaError(
+        "points must be supplied by manifest item points",
+        sourcePath,
+        section.startLine + index
+      );
     }
     const rendered = renderer.renderInline(
-      criterion,
+      content,
       { sectionName: "Scoring", sourcePath, sectionStartLine: section.startLine + index },
       "disabled"
     );
-    criteria.push({ points: parseDecimal(points), criterionXml: rendered.xml });
+    criteria.push({ criterionXml: rendered.xml });
   });
-  if (criteria.length === 0) {
-    throw new Error("Scoring section must not be empty");
-  }
   return criteria;
 }
 

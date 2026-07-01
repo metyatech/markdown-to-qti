@@ -14,7 +14,7 @@ test("cli writes QTI output and assessment-test for direct input", async () => {
   const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
   try {
     const outputDir = path.join(tempDir, "out");
-    const fixtureId = "choice-with-scoring";
+    const fixtureId = "descriptive-with-explanation";
     const inputFile = path.join(tempDir, `${fixtureId}.md`);
     writeFileSync(inputFile, readFixture(`${fixtureId}.md`), "utf8");
 
@@ -31,7 +31,7 @@ test("cli writes QTI output and assessment-test for direct input", async () => {
     );
     assert.match(
       readFileSync(path.join(outputDir, "assessment-test.qti.xml"), "utf8"),
-      /qti-assessment-item-ref[\s\S]*identifier="choice-with-scoring"[\s\S]*href="choice-with-scoring\.qti\.xml"/u
+      /qti-assessment-item-ref[\s\S]*identifier="descriptive-with-explanation"[\s\S]*href="descriptive-with-explanation\.qti\.xml"/u
     );
   } finally {
     await rm(tempDir, { force: true, recursive: true });
@@ -42,7 +42,7 @@ test("cli validate-only does not write output", async () => {
   const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
   try {
     const outputDir = path.join(tempDir, "out");
-    const fixtureId = "descriptive-with-scoring";
+    const fixtureId = "descriptive-with-markdown";
     const inputFile = path.join(tempDir, `${fixtureId}.md`);
     writeFileSync(inputFile, readFixture(`${fixtureId}.md`), "utf8");
 
@@ -67,33 +67,164 @@ test("cli manifest writes ordered package with summed time limit", async () => {
   const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
   try {
     const outputDir = path.join(tempDir, "out");
-    const first = "choice-with-scoring";
-    const second = "descriptive-with-scoring";
-    writeFileSync(path.join(tempDir, `${first}.md`), readFixture(`${first}.md`), "utf8");
-    writeFileSync(path.join(tempDir, `${second}.md`), readFixture(`${second}.md`), "utf8");
-    const manifestPath = path.join(tempDir, "assessment.yaml");
-    writeFileSync(
-      manifestPath,
-      ["title: Assessment Test", "items:", `  - ./${first}.md`, `  - ./${second}.md`, ""].join(
-        "\n"
-      ),
-      "utf8"
-    );
+    writeFixtureCopy(tempDir, "choice-with-scoring");
+    writeFixtureCopy(tempDir, "descriptive-with-scoring");
+    const manifestPath = writeManifest(tempDir, [
+      "title: Assessment Test",
+      "items:",
+      "  - id: q1",
+      "    ref: ./choice-with-scoring.md",
+      "    points: [2, 1]",
+      "  - id: q2",
+      "    ref: ./descriptive-with-scoring.md",
+      "    points: [2, 1]"
+    ]);
 
     const exitCode = runCli(["--manifest", manifestPath, "--output-dir", outputDir]);
 
     assert.equal(exitCode, 0);
-    assert.equal(existsSync(path.join(outputDir, `${first}.qti.xml`)), true);
-    assert.equal(existsSync(path.join(outputDir, `${second}.qti.xml`)), true);
+    // Item output file names and identifiers come from the manifest item id.
+    const firstItemXml = readFileSync(path.join(outputDir, "q1.qti.xml"), "utf8");
+    const secondItemXml = readFileSync(path.join(outputDir, "q2.qti.xml"), "utf8");
+    assert.match(firstItemXml, /identifier="q1"/u);
+    assert.match(secondItemXml, /identifier="q2"/u);
+    // Points supplied by the manifest still drive the scoring rubric.
+    assert.match(firstItemXml, /<qti-p>\[2\] Selects the only prime number<\/qti-p>/u);
+
     const assessmentTest = readFileSync(path.join(outputDir, "assessment-test.qti.xml"), "utf8");
     assert.match(assessmentTest, /<qti-time-limits max-time="180"\/>/u);
     assert.match(
       assessmentTest,
-      /identifier="choice-with-scoring"[\s\S]*identifier="descriptive-with-scoring"/u
+      /identifier="q1"[\s\S]*href="q1\.qti\.xml"[\s\S]*identifier="q2"[\s\S]*href="q2\.qti\.xml"/u
     );
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
+});
+
+test("cli manifest reads plain object items without points", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    const outputDir = path.join(tempDir, "out");
+    writeFileSync(path.join(tempDir, "plain.md"), plainQuestion("Plain"), "utf8");
+    const manifestPath = writeManifest(tempDir, [
+      "title: Assessment Test",
+      "items:",
+      "  - id: only",
+      "    ref: ./plain.md"
+    ]);
+
+    const exitCode = runCli(["--manifest", manifestPath, "--output-dir", outputDir]);
+
+    assert.equal(exitCode, 0);
+    assert.equal(existsSync(path.join(outputDir, "only.qti.xml")), true);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test("cli manifest rejects a string item", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - ./plain.md"],
+    { "plain.md": plainQuestion("Plain") },
+    /must be a mapping/u
+  );
+});
+
+test("cli manifest rejects an item missing id", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - ref: ./plain.md"],
+    { "plain.md": plainQuestion("Plain") },
+    /id is required/u
+  );
+});
+
+test("cli manifest rejects an item missing ref", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - id: q1"],
+    {},
+    /ref is required/u
+  );
+});
+
+test("cli manifest rejects a duplicate id", async () => {
+  await expectManifestError(
+    [
+      "title: Assessment Test",
+      "items:",
+      "  - id: dup",
+      "    ref: ./plain.md",
+      "  - id: dup",
+      "    ref: ./plain.md"
+    ],
+    { "plain.md": plainQuestion("Plain") },
+    /Duplicate manifest item id: dup/u
+  );
+});
+
+test("cli manifest rejects an unknown item field", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - id: q1", "    ref: ./plain.md", "    weight: 2"],
+    { "plain.md": plainQuestion("Plain") },
+    /Unknown manifest item field: weight/u
+  );
+});
+
+test("cli manifest rejects a root type field", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "type: exam", "items:", "  - id: q1", "    ref: ./plain.md"],
+    { "plain.md": plainQuestion("Plain") },
+    /'type' is not accepted/u
+  );
+});
+
+test("cli manifest rejects points that are not a positive integer array", async () => {
+  const invalidPoints = ["[-1]", "[0]", "[1.5]", "5"];
+  for (const points of invalidPoints) {
+    await expectManifestError(
+      [
+        "title: Assessment Test",
+        "items:",
+        "  - id: q1",
+        "    ref: ./scoring.md",
+        `    points: ${points}`
+      ],
+      { "scoring.md": scoringQuestion("Scoring", ["First", "Second"]) },
+      /points must be (a list of )?positive integers/u
+    );
+  }
+});
+
+test("cli manifest errors when scoring is present but points are missing", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - id: q1", "    ref: ./scoring.md"],
+    { "scoring.md": scoringQuestion("Scoring", ["First", "Second"]) },
+    /scoring criteria present, but manifest item points missing/u
+  );
+});
+
+test("cli manifest errors when points count differs from scoring criteria", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - id: q1", "    ref: ./scoring.md", "    points: [2]"],
+    { "scoring.md": scoringQuestion("Scoring", ["First", "Second"]) },
+    /scoring criteria count \(2\) does not match manifest points count \(1\)/u
+  );
+});
+
+test("cli manifest errors when points are provided without scoring criteria", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - id: q1", "    ref: ./plain.md", "    points: [2]"],
+    { "plain.md": plainQuestion("Plain") },
+    /scoring criteria absent in question, but manifest item specifies points/u
+  );
+});
+
+test("cli manifest rejects inline points in a scoring criterion", async () => {
+  await expectManifestError(
+    ["title: Assessment Test", "items:", "  - id: q1", "    ref: ./scoring.md", "    points: [2]"],
+    { "scoring.md": scoringQuestion("Scoring", ["2: keeps points inline"]) },
+    /points must be supplied by manifest item points/u
+  );
 });
 
 test("cli copies local images to output directory", async () => {
@@ -181,12 +312,92 @@ test("cli rejects local image paths that escape the output directory", async () 
   }
 });
 
+async function expectManifestError(
+  manifestBody: string[],
+  files: Record<string, string>,
+  pattern: RegExp
+): Promise<void> {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    for (const [name, content] of Object.entries(files)) {
+      writeFileSync(path.join(tempDir, name), content, "utf8");
+    }
+    const outputDir = path.join(tempDir, "out");
+    const manifestPath = writeManifest(tempDir, manifestBody);
+    const stderr = captureStream();
+
+    const exitCode = runCli(
+      ["--manifest", manifestPath, "--output-dir", outputDir],
+      devNullStream(),
+      stderr.stream
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(stderr.text(), pattern);
+    assert.equal(existsSync(path.join(outputDir, "q1.qti.xml")), false);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+}
+
+function writeManifest(dir: string, body: string[]): string {
+  const manifestPath = path.join(dir, "assessment.yaml");
+  writeFileSync(manifestPath, `${body.join("\n")}\n`, "utf8");
+  return manifestPath;
+}
+
+function writeFixtureCopy(dir: string, fixtureId: string): void {
+  writeFileSync(path.join(dir, `${fixtureId}.md`), readFixture(`${fixtureId}.md`), "utf8");
+}
+
+function plainQuestion(title: string): string {
+  return [
+    "---",
+    "question_type: descriptive",
+    "time_budget_seconds: 60",
+    "---",
+    `# ${title}`,
+    "",
+    "## Prompt",
+    "Explain something.",
+    ""
+  ].join("\n");
+}
+
+function scoringQuestion(title: string, criteria: string[]): string {
+  return [
+    "---",
+    "question_type: descriptive",
+    "time_budget_seconds: 60",
+    "---",
+    `# ${title}`,
+    "",
+    "## Prompt",
+    "Explain something.",
+    "",
+    "## Scoring",
+    ...criteria.map((criterion) => `- ${criterion}`),
+    ""
+  ].join("\n");
+}
+
 function readFixture(name: string): string {
   return readFileSync(path.join(fixturesDir, name), "utf8");
 }
 
 function normalizeXml(xml: string): string {
   return xml.replaceAll("\r\n", "\n").replaceAll(/^\s+</gmu, "<");
+}
+
+function captureStream(): { stream: NodeJS.WritableStream; text: () => string } {
+  const chunks: string[] = [];
+  const stream = new Writable({
+    write(chunk, _encoding, callback) {
+      chunks.push(String(chunk));
+      callback();
+    }
+  });
+  return { stream, text: () => chunks.join("") };
 }
 
 function devNullStream(): NodeJS.WritableStream {

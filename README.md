@@ -40,6 +40,21 @@ Generate a QTI package from a manifest:
 npx markdown-to-qti --manifest path/to/manifest.yaml --output-dir qti-out
 ```
 
+The manifest is strict YAML. Each item is a mapping with an `id`, a relative
+`ref` to the question file, and optional `points` (one positive integer per
+`## Scoring` criterion):
+
+```yaml
+title: 2026 JavaScript II Final Exam
+time_limit_seconds: 1200
+items:
+  - id: q1
+    ref: questions/q1.md
+    points: [2, 1]
+  - id: q2
+    ref: questions/q2.md
+```
+
 Single-file and multi-file conversion remains available for compatibility:
 
 ```powershell
@@ -73,10 +88,32 @@ Options:
 - `--version`, `-V`: Show version.
 - `--help`, `-h`: Show help.
 
+### Question bank layout
+
+The canonical layout keeps question Markdown files together with the manifest
+that orders them and assigns identifiers and points:
+
+```text
+question-bank/
+  manifest.yaml
+  questions/
+    q1.md
+    q2.md
+    images/
+      diagram.png
+```
+
+Running `npx markdown-to-qti --manifest question-bank/manifest.yaml
+--output-dir qti-out` writes one `<id>.qti.xml` per item (named by the manifest
+item `id`), copies referenced local images, and writes
+`assessment-test.qti.xml` referencing the items in manifest order.
+
 ### CLI details
 
 - `--manifest` writes item XML files and `assessment-test.qti.xml` using the
-  manifest `title` and item order.
+  manifest `title` and item order. Each item's output file and QTI `identifier`
+  come from the manifest item `id`. Scoring points are supplied by the item
+  `points` array.
 - Manifest `time_limit_seconds` is authored as an integer number of seconds and
   is emitted as the QTI test-part time limit, for example
   `<qti-time-limits max-time="300"/>`. If omitted, the limit is the sum of item

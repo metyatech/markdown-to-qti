@@ -36,7 +36,8 @@ independent from the test-part time limit.
 
 Each question file maps to a `qti-assessment-item` with:
 
-- `identifier`: input filename without the final extension.
+- `identifier`: the manifest item `id`. In `--input` compatibility mode it is
+  the input filename without the final extension.
 - `title`: the `# <title>` heading.
 - `adaptive="false"`.
 - `time-dependent="false"`.
@@ -89,15 +90,20 @@ Other raw HTML is rejected.
 
 ## Scoring And Explanation
 
-`## Scoring` maps to:
+`## Scoring` lists criterion text only. The point value for each criterion comes
+from the manifest item `points` array, matched positionally to the criteria. A
+question with a `## Scoring` section must have a manifest item `points` array of
+equal length; a question without one must not have `points`.
+
+Given criteria plus manifest points, `## Scoring` maps to:
 
 - `qti-outcome-declaration identifier="SCORE"`, `cardinality="single"`,
   `base-type="float"`.
 - `qti-outcome-declaration identifier="MAXSCORE"`, `cardinality="single"`,
   `base-type="float"`, with a default `qti-value` equal to the sum of the
-  criterion point values.
+  manifest point values.
 - `qti-rubric-block view="scorer"` with one `qti-p` per criterion, formatted as
-  `[<points>] <criterion>`.
+  `[<points>] <criterion>`, where `<points>` is the manifest point value.
 
 Scoring response-processing is deferred and is not emitted. Generated items do
 not set `SCORE` from `## Scoring` yet.

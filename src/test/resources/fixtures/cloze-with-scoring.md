@@ -8,4 +8,4 @@ time_budget_seconds: 45
 The chemical formula for water is {{H2O}}.
 
 ## Scoring
-- 1: Provides H2O
+- Provides H2O

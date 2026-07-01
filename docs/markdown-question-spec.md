@@ -48,7 +48,11 @@ Required:
 
 Optional:
 
-- `## Scoring`: flat rubric list using `- <points>: <criterion>`.
+- `## Scoring`: flat rubric list using `- <criterion>`. Criterion text only;
+  point values are not written in the question file. When `## Scoring` is
+  present, the manifest item MUST supply a matching `points` array (one positive
+  integer per criterion). Writing a point value inline (for example
+  `- 2: <criterion>`) is rejected.
 - `## Explanation`: learner-facing explanation.
 
 Choice-only:
@@ -80,21 +84,42 @@ escape them as `\{{` or `\}}`.
 
 ## Manifest
 
-A manifest defines the package title, item order, and optional total time limit.
-Item paths are resolved relative to the manifest file and order is preserved.
+A manifest defines the package title, item order, per-item identifiers, and
+optional total time limit. It is parsed as strict YAML. Item `ref` paths are
+resolved relative to the manifest file and item order is preserved.
 
 ```yaml
 title: 2026 JavaScript II Final Exam
 time_limit_seconds: 1200
 items:
-  - q1.q.md
-  - q2.q.md
+  - id: q1
+    ref: questions/q1.md
+    points: [2, 1]
+  - id: q2
+    ref: questions/q2.md
 ```
 
 Required:
 
-- `title`
-- `items`
+- `title`: non-empty string.
+- `items`: non-empty list of item mappings.
+
+Each `items` entry is a mapping (a bare string item is rejected) with exactly
+these keys:
+
+- `id` (required): item identifier matching
+  `/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/`. It becomes the generated QTI item
+  `identifier` and the `<id>.qti.xml` output file name. Ids must be unique
+  within the manifest.
+- `ref` (required): relative path to the question Markdown file. Absolute paths,
+  Windows drive paths, and URLs are rejected, and the target file must exist.
+- `points` (optional): list of positive integers, one per `## Scoring`
+  criterion in the referenced question. It is required when the question has a
+  `## Scoring` section and must be omitted when it does not; the count must match
+  the number of criteria.
+
+Unknown manifest keys, unknown item keys, and the removed `type` key are
+rejected. Error messages include the manifest path and line number.
 
 Optional:
 

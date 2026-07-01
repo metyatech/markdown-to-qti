@@ -12,7 +12,13 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { convertMarkdownToQtiWithAssets, parsePositiveInt, type LocalImage } from "./convert.js";
+import { isMap, isScalar, isSeq, LineCounter, type Node, parseDocument } from "yaml";
+
+import {
+  convertMarkdownToQtiWithAssets,
+  type LocalImage,
+  type QtiConversionResult
+} from "./convert.js";
 import { escapeXml } from "./escape-xml.js";
 
 export const VERSION = "0.1.0";
@@ -32,10 +38,17 @@ interface AssessmentItemRef {
   href: string;
 }
 
+interface ManifestItemSpec {
+  id: string;
+  ref: string;
+  points: number[] | null;
+  resolvedPath: string;
+}
+
 interface ManifestSpec {
   title: string;
   timeLimitSeconds: number | null;
-  itemPaths: string[];
+  items: ManifestItemSpec[];
 }
 
 interface ConversionInputSource {
@@ -238,28 +251,22 @@ function runManifestCli(
   let summedTimeBudget = 0;
   if (!parsed.validateOnly) mkdirSync(outputDir, { recursive: true });
 
-  for (const itemPath of manifest.itemPaths) {
-    if (!existsSync(itemPath)) {
-      writeln(error, `Manifest item not found: ${path.resolve(itemPath)}`);
-      return 1;
-    }
-    const identifier = fileNameWithoutExtension(itemPath);
-    let conversion;
+  for (const item of manifest.items) {
+    const refPath = item.resolvedPath;
+    let conversion: QtiConversionResult;
     try {
-      conversion = convertMarkdownToQtiWithAssets(
-        readFileSync(itemPath, "utf8"),
-        identifier,
-        itemPath
-      );
+      conversion = convertMarkdownToQtiWithAssets(readFileSync(refPath, "utf8"), item.id, refPath, {
+        scoringPoints: item.points ?? undefined
+      });
     } catch (exception) {
       writeln(error, exception instanceof Error ? exception.message : String(exception));
       return 1;
     }
     summedTimeBudget += conversion.timeBudgetSeconds ?? 0;
     if (parsed.validateOnly) {
-      if (parsed.verbose) writeln(output, `Validated: ${path.resolve(itemPath)}`);
+      if (parsed.verbose) writeln(output, `Validated: ${refPath}`);
     } else {
-      const outputFile = path.join(outputDir, `${identifier}.qti.xml`);
+      const outputFile = path.join(outputDir, `${item.id}.qti.xml`);
       writeFileSync(outputFile, conversion.qtiXml, "utf8");
       generatedFiles.push(path.resolve(outputFile));
       for (const copied of copyLocalImages(conversion.localImages, outputDir)) {
@@ -267,7 +274,7 @@ function runManifestCli(
       }
       if (parsed.verbose) writeln(output, `Wrote: ${path.resolve(outputFile)}`);
     }
-    itemRefs.push({ identifier, href: `${identifier}.qti.xml` });
+    itemRefs.push({ identifier: item.id, href: `${item.id}.qti.xml` });
   }
   const resolvedTimeLimit = manifest.timeLimitSeconds ?? summedTimeBudget;
   if (!parsed.validateOnly) {
@@ -281,52 +288,248 @@ function runManifestCli(
   return 0;
 }
 
+const MANIFEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/u;
+const WINDOWS_DRIVE_PATTERN = /^[A-Za-z]:/u;
+const URL_SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//u;
+
 function parseManifest(manifestPath: string): ManifestSpec {
-  const lines = readFileSync(manifestPath, "utf8").replace(/\r\n/gu, "\n").split("\n");
-  let title: string | null = null;
-  let timeLimitSeconds: number | null = null;
-  const items: string[] = [];
-  let inItems = false;
-  for (let index = 0; index < lines.length; index += 1) {
-    const rawLine = lines[index] ?? "";
-    const lineNumber = index + 1;
-    const line = rawLine.trim();
-    if (line === "" || line.startsWith("#")) continue;
-    if (inItems && rawLine.startsWith("  - ")) {
-      const item = trimQuotes(rawLine.slice(4).trim());
-      if (item === "")
-        throw new Error(
-          `Manifest item must not be empty (${path.resolve(manifestPath)}:${lineNumber})`
-        );
-      items.push(path.normalize(path.resolve(path.dirname(path.resolve(manifestPath)), item)));
-      continue;
-    }
-    inItems = false;
-    if (line.startsWith("title:")) {
-      title = trimQuotes(line.slice("title:".length).trim());
-    } else if (line.startsWith("time_limit_seconds:")) {
-      timeLimitSeconds = parsePositiveInt(
-        line.slice("time_limit_seconds:".length).trim(),
-        "time_limit_seconds",
-        manifestPath,
-        lineNumber
-      );
-    } else if (line === "items:") {
-      inItems = true;
-    } else if (line.startsWith("type:")) {
-      throw new Error("Manifest field 'type' is deprecated and not accepted");
-    } else {
-      throw new Error(
-        `Unknown manifest field (${path.resolve(manifestPath)}:${lineNumber}): ${line}`
-      );
-    }
+  const resolvedManifest = path.resolve(manifestPath);
+  const text = readFileSync(manifestPath, "utf8");
+  const lineCounter = new LineCounter();
+  const doc = parseDocument(text, { lineCounter });
+  if (doc.errors.length > 0) {
+    const first = doc.errors[0];
+    throw manifestError(
+      first?.message ?? "Invalid YAML",
+      resolvedManifest,
+      offsetLine(first?.pos?.[0], lineCounter)
+    );
   }
-  const resolvedTitle = title;
-  if (resolvedTitle === null || resolvedTitle.trim() === "")
-    throw new Error(`Manifest title is required (${path.resolve(manifestPath)})`);
-  if (items.length === 0)
-    throw new Error(`Manifest items are required (${path.resolve(manifestPath)})`);
-  return { title: resolvedTitle, timeLimitSeconds, itemPaths: items };
+  const root = doc.contents;
+  if (!isMap(root)) {
+    throw manifestError("Manifest must be a YAML mapping", resolvedManifest, null);
+  }
+
+  const allowedKeys = new Set(["title", "time_limit_seconds", "items"]);
+  let titleNode: Node | null = null;
+  let timeLimitNode: Node | null = null;
+  let itemsNode: Node | null = null;
+  for (const pair of root.items) {
+    const keyNode = pair.key;
+    const key = isScalar(keyNode) ? String(keyNode.value) : String(keyNode);
+    const keyLine = nodeLine(keyNode, lineCounter);
+    if (key === "type") {
+      throw manifestError("Manifest field 'type' is not accepted", resolvedManifest, keyLine);
+    }
+    if (!allowedKeys.has(key)) {
+      throw manifestError(`Unknown manifest field: ${key}`, resolvedManifest, keyLine);
+    }
+    if (key === "title") titleNode = pair.value as Node | null;
+    else if (key === "time_limit_seconds") timeLimitNode = pair.value as Node | null;
+    else itemsNode = pair.value as Node | null;
+  }
+
+  const title = scalarString(titleNode);
+  if (title === null || title.trim() === "") {
+    throw manifestError(
+      "Manifest title is required and must be a non-empty string",
+      resolvedManifest,
+      nodeLine(titleNode, lineCounter)
+    );
+  }
+
+  let timeLimitSeconds: number | null = null;
+  if (isPresentNode(timeLimitNode)) {
+    timeLimitSeconds = positiveInteger(
+      timeLimitNode,
+      "time_limit_seconds",
+      resolvedManifest,
+      lineCounter
+    );
+  }
+
+  if (!isPresentNode(itemsNode) || !isSeq(itemsNode)) {
+    throw manifestError(
+      "Manifest items are required and must be a list",
+      resolvedManifest,
+      nodeLine(itemsNode, lineCounter)
+    );
+  }
+  if (itemsNode.items.length === 0) {
+    throw manifestError("Manifest items must not be empty", resolvedManifest, null);
+  }
+
+  const items: ManifestItemSpec[] = [];
+  const seenIds = new Set<string>();
+  const manifestDir = path.dirname(resolvedManifest);
+  for (const itemNode of itemsNode.items) {
+    const itemLine = nodeLine(itemNode as Node, lineCounter);
+    if (!isMap(itemNode)) {
+      throw manifestError(
+        "Manifest item must be a mapping with keys id, ref, and optional points",
+        resolvedManifest,
+        itemLine
+      );
+    }
+    const itemAllowed = new Set(["id", "ref", "points"]);
+    let idNode: Node | null = null;
+    let refNode: Node | null = null;
+    let pointsNode: Node | null = null;
+    for (const pair of itemNode.items) {
+      const keyNode = pair.key as Node | null;
+      const key = isScalar(keyNode) ? String(keyNode.value) : String(keyNode);
+      const keyLine = nodeLine(keyNode, lineCounter);
+      if (!itemAllowed.has(key)) {
+        throw manifestError(`Unknown manifest item field: ${key}`, resolvedManifest, keyLine);
+      }
+      if (key === "id") idNode = pair.value as Node | null;
+      else if (key === "ref") refNode = pair.value as Node | null;
+      else pointsNode = pair.value as Node | null;
+    }
+
+    const id = scalarString(idNode);
+    if (id === null || !MANIFEST_ID_PATTERN.test(id)) {
+      throw manifestError(
+        "Manifest item id is required and must match /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/",
+        resolvedManifest,
+        nodeLine(idNode ?? (itemNode as Node), lineCounter)
+      );
+    }
+    if (seenIds.has(id)) {
+      throw manifestError(
+        `Duplicate manifest item id: ${id}`,
+        resolvedManifest,
+        nodeLine(idNode, lineCounter)
+      );
+    }
+
+    const ref = scalarString(refNode);
+    const refLine = nodeLine(refNode ?? (itemNode as Node), lineCounter);
+    if (ref === null || ref.trim() === "") {
+      throw manifestError(
+        "Manifest item ref is required and must be a non-empty string",
+        resolvedManifest,
+        refLine
+      );
+    }
+    if (ref.startsWith("/") || ref.startsWith("\\") || WINDOWS_DRIVE_PATTERN.test(ref)) {
+      throw manifestError(
+        `Manifest item ref must be a relative path, not absolute: ${ref}`,
+        resolvedManifest,
+        refLine
+      );
+    }
+    if (URL_SCHEME_PATTERN.test(ref)) {
+      throw manifestError(
+        `Manifest item ref must be a local path, not a URL: ${ref}`,
+        resolvedManifest,
+        refLine
+      );
+    }
+
+    const points = parseManifestPoints(pointsNode, resolvedManifest, lineCounter);
+
+    const resolvedPath = path.resolve(manifestDir, ref);
+    if (!existsSync(resolvedPath)) {
+      throw manifestError(
+        `Manifest item ref not found: ${resolvedPath}`,
+        resolvedManifest,
+        refLine
+      );
+    }
+
+    seenIds.add(id);
+    items.push({ id, ref, points, resolvedPath });
+  }
+
+  return { title, timeLimitSeconds, items };
+}
+
+function parseManifestPoints(
+  pointsNode: Node | null,
+  resolvedManifest: string,
+  lineCounter: LineCounter
+): number[] | null {
+  if (!isPresentNode(pointsNode)) {
+    return null;
+  }
+  const pointsLine = nodeLine(pointsNode, lineCounter);
+  if (!isSeq(pointsNode)) {
+    throw manifestError(
+      "Manifest item points must be a list of positive integers",
+      resolvedManifest,
+      pointsLine
+    );
+  }
+  const result: number[] = [];
+  for (const element of pointsNode.items) {
+    if (
+      !isScalar(element) ||
+      typeof element.value !== "number" ||
+      !Number.isInteger(element.value) ||
+      element.value <= 0
+    ) {
+      throw manifestError(
+        "Manifest item points must be positive integers",
+        resolvedManifest,
+        nodeLine(element as Node, lineCounter)
+      );
+    }
+    result.push(element.value);
+  }
+  return result;
+}
+
+function isPresentNode(node: Node | null): node is Node {
+  return node !== null && node !== undefined;
+}
+
+function scalarString(node: Node | null): string | null {
+  if (isScalar(node) && typeof node.value === "string") {
+    return node.value;
+  }
+  return null;
+}
+
+function positiveInteger(
+  node: Node | null,
+  fieldName: string,
+  resolvedManifest: string,
+  lineCounter: LineCounter
+): number {
+  if (
+    isScalar(node) &&
+    typeof node.value === "number" &&
+    Number.isInteger(node.value) &&
+    node.value > 0
+  ) {
+    return node.value;
+  }
+  throw manifestError(
+    `${fieldName} must be a positive integer`,
+    resolvedManifest,
+    nodeLine(node, lineCounter)
+  );
+}
+
+function nodeLine(node: Node | null, lineCounter: LineCounter): number | null {
+  const range = node?.range;
+  if (range) {
+    return lineCounter.linePos(range[0]).line;
+  }
+  return null;
+}
+
+function offsetLine(offset: number | undefined, lineCounter: LineCounter): number | null {
+  if (offset === undefined) {
+    return null;
+  }
+  return lineCounter.linePos(offset).line;
+}
+
+function manifestError(message: string, resolvedManifest: string, line: number | null): Error {
+  const suffix = line !== null ? `${resolvedManifest}:${line}` : resolvedManifest;
+  return new Error(`${message} (${suffix})`);
 }
 
 function resolveInputs(
@@ -492,18 +695,6 @@ function writeJsonSummary(output: NodeJS.WritableStream, generatedFiles: string[
 function fileNameWithoutExtension(value: string): string {
   const filename = path.basename(value);
   return filename.includes(".") ? filename.slice(0, filename.lastIndexOf(".")) : filename;
-}
-
-function trimQuotes(value: string): string {
-  let start = 0;
-  let end = value.length;
-  while (start < end && isQuoteCode(value.charCodeAt(start))) start += 1;
-  while (end > start && isQuoteCode(value.charCodeAt(end - 1))) end -= 1;
-  return value.slice(start, end);
-}
-
-function isQuoteCode(code: number): boolean {
-  return code === 34 || code === 39;
 }
 
 function writeln(stream: NodeJS.WritableStream, message: string): void {

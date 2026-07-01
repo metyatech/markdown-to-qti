@@ -8,5 +8,5 @@ time_budget_seconds: 120
 Explain the role of chlorophyll in photosynthesis.
 
 ## Scoring
-- 2: Identifies chlorophyll as a light-absorbing pigment
-- 1: Mentions conversion of light energy to chemical energy
+- Identifies chlorophyll as a light-absorbing pigment
+- Mentions conversion of light energy to chemical energy

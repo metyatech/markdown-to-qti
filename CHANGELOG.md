@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Manifests are parsed as strict YAML. Each item is a mapping with `id`, `ref`,
+  and optional `points`; the item `id` sets the QTI item identifier and output
+  file name. Bare string items and the removed `type` key are rejected.
+- Scoring points are supplied by the manifest item `points` array instead of
+  inline `- <points>: <criterion>` syntax. `## Scoring` lists criterion text
+  only, and inline point values are rejected. A `## Scoring` section requires a
+  matching `points` array of equal length.
+
 ### Added
 
 - Initial project structure.
