@@ -155,6 +155,10 @@ Question prompt.
 Supported `question_type` values are `descriptive`, `choice`, and `cloze`. The
 old `## Type` section is deprecated and not part of the canonical format.
 
+Additional frontmatter keys are allowed for authoring metadata, including nested
+YAML mappings. The converter reads only `question_type` and
+`time_budget_seconds` for QTI generation and ignores the rest.
+
 HTML comments are allowed as source-only authoring notes and omitted from
 generated QTI. Other raw HTML blocks and inline HTML are not supported and raise
 an error.

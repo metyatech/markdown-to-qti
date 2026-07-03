@@ -2,6 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { addDecimals, DECIMAL_ZERO, type Decimal, formatDecimal, parseDecimal } from "./decimal.js";
+import { parseDocument } from "yaml";
 import { escapeXml } from "./escape-xml.js";
 import {
   type ChoiceOption,
@@ -328,10 +329,23 @@ function parseMarkdownQuestion(
 }
 
 function parseQuestionFrontmatter(lines: string[], sourcePath: string | null): QuestionFrontmatter {
-  const values = parseSimpleYamlMap(lines, sourcePath, 2);
-  const typeValue = values.get("question_type");
-  if (typeValue === undefined) {
+  const text = lines.join("\n");
+  const document = parseDocument(text, { prettyErrors: false });
+  if (document.errors.length > 0) {
+    const messages = document.errors.map((err) => err.message).join("; ");
+    throw schemaError(`Invalid frontmatter YAML: ${messages}`, sourcePath, 2);
+  }
+  const raw = document.toJS({}) ?? {};
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw schemaError("Frontmatter must be a YAML map", sourcePath, 2);
+  }
+  const values = raw as Record<string, unknown>;
+  if (!("question_type" in values)) {
     throw schemaError("Missing required frontmatter: question_type", sourcePath, 2);
+  }
+  const typeValue = values.question_type;
+  if (typeof typeValue !== "string") {
+    throw schemaError("question_type must be a string", sourcePath, 2);
   }
   let questionType: QuestionType;
   switch (typeValue) {
@@ -348,7 +362,7 @@ function parseQuestionFrontmatter(lines: string[], sourcePath: string | null): Q
       throw new Error(`Unknown question_type: ${typeValue}`);
   }
   const timeBudgetSeconds = parsePositiveInt(
-    values.get("time_budget_seconds"),
+    values.time_budget_seconds as string | number | undefined,
     "time_budget_seconds",
     sourcePath,
     2
@@ -392,50 +406,27 @@ function parseLegacyType(
   }
 }
 
-function parseSimpleYamlMap(
-  lines: string[],
-  sourcePath: string | null,
-  lineOffset: number
-): Map<string, string> {
-  const values = new Map<string, string>();
-  lines.forEach((rawLine, index) => {
-    const line = rawLine.trim();
-    if (line === "" || line.startsWith("#")) {
-      return;
-    }
-    if (/^\s/u.test(rawLine)) {
-      throw schemaError("Frontmatter must be a flat YAML map", sourcePath, lineOffset + index);
-    }
-    const separator = line.indexOf(":");
-    if (separator <= 0) {
-      throw schemaError(`Invalid frontmatter entry: ${line}`, sourcePath, lineOffset + index);
-    }
-    const key = line.slice(0, separator).trim();
-    const value = trimQuotes(line.slice(separator + 1).trim());
-    if (key === "") {
-      throw new Error("Frontmatter key must not be empty");
-    }
-    if (values.has(key)) {
-      throw new Error(`Duplicate frontmatter key: ${key}`);
-    }
-    values.set(key, value);
-  });
-  return values;
-}
-
 export function parsePositiveInt(
-  value: string | undefined,
+  value: string | number | undefined,
   fieldName: string,
   sourcePath: string | null,
   line: number | null
 ): number {
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     throw schemaError(`Missing required value: ${fieldName}`, sourcePath, line);
   }
-  if (!/^[+-]?[0-9]+$/u.test(value)) {
+  let parsed: number;
+  if (typeof value === "number") {
+    parsed = value;
+  } else if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!/^[+-]?[0-9]+$/u.test(trimmed)) {
+      throw schemaError(`${fieldName} must be a positive integer`, sourcePath, line);
+    }
+    parsed = Number(trimmed);
+  } else {
     throw schemaError(`${fieldName} must be a positive integer`, sourcePath, line);
   }
-  const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw schemaError(`${fieldName} must be a positive integer`, sourcePath, line);
   }
@@ -667,10 +658,6 @@ function safeLocalImagePath(source: string, sourcePath: string): string {
     );
   }
   return normalized;
-}
-
-function trimQuotes(value: string): string {
-  return value.replace(/^['"]+/u, "").replace(/['"]+$/u, "");
 }
 
 function isBlockContent(xml: string): boolean {

@@ -37,6 +37,41 @@ for (const markdownFixture of markdownFixtures) {
   });
 }
 
+test("allows nested authoring metadata in frontmatter", () => {
+  const sourcePath = path.resolve("src/test/resources/fixtures/nested-metadata.md");
+  const result = convertMarkdownToQtiWithAssets(
+    [
+      "---",
+      "question_type: choice",
+      "time_budget_seconds: 60",
+      "資料:",
+      "  repo: metyatech/javascript-course-docs",
+      "  path: content/docs/basics/pre-function-review/index.mdx",
+      "---",
+      "",
+      "# Nested Metadata",
+      "",
+      "## Prompt",
+      "",
+      "Choose the correct answer.",
+      "",
+      "## Options",
+      "",
+      "- [x] Correct",
+      "- [ ] Incorrect",
+      "",
+      "## Explanation",
+      "",
+      "The nested authoring metadata is ignored by QTI generation."
+    ].join("\n"),
+    "nested-metadata",
+    sourcePath
+  );
+
+  assert.equal(result.timeBudgetSeconds, 60);
+  assert.match(result.qtiXml, /title="Nested Metadata"/u);
+  assert.match(result.qtiXml, /Correct/u);
+});
 test("rejects non-comment raw HTML blocks", () => {
   assert.throws(
     () =>

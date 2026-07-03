@@ -34,7 +34,21 @@ Required frontmatter:
 - `time_budget_seconds`: positive integer seconds. Used to resolve the
   manifest time limit when the manifest does not provide `time_limit_seconds`.
 
-Removed frontmatter/metadata:
+Additional authoring metadata:
+
+- Any other top-level frontmatter keys are allowed for authoring metadata
+  (for example `資料`, `metadata`, `tags`) and are ignored by QTI generation.
+- Additional keys MAY be nested YAML mappings. The converter only reads
+  `question_type` and `time_budget_seconds` for QTI generation; unknown keys
+  are silently ignored regardless of their YAML shape (scalar, mapping, list).
+
+  ```yaml
+  資料:
+    repo: metyatech/javascript-course-docs
+    path: content/docs/basics/pre-function-review/index.mdx
+  ```
+
+  Removed frontmatter/metadata:
 
 - `time_estimate_seconds` is not supported.
 - `multi`, `order`, and `match` question types are not supported.
