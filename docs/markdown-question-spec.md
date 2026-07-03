@@ -48,7 +48,7 @@ Additional authoring metadata:
     path: content/docs/basics/pre-function-review/index.mdx
   ```
 
-  Removed frontmatter/metadata:
+Removed frontmatter/metadata:
 
 - `time_estimate_seconds` is not supported.
 - `multi`, `order`, and `match` question types are not supported.
