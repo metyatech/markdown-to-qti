@@ -15,9 +15,15 @@ how that format maps to IMS QTI 3.0 XML.
 The resolved time limit is:
 
 - `manifest.time_limit_seconds`, when present.
-- Otherwise the sum of each item `time_budget_seconds`.
+- Otherwise the sum of each item `time_budget_seconds`, when every item
+  specifies one.
+- Otherwise absent when every item omits `time_budget_seconds`.
 
-The resolved value is emitted as a `qti-time-limits` child of
+A manifest without `time_limit_seconds` cannot mix items with and without
+`time_budget_seconds`; conversion fails in that case. An explicit manifest time
+limit takes precedence over all item time budgets.
+
+When resolved, the value is emitted as a `qti-time-limits` child of
 `qti-test-part`. Authoring values are positive integer seconds, and the
 canonical `max-time` representation is the integer number of seconds:
 
@@ -28,9 +34,9 @@ canonical `max-time` representation is the integer number of seconds:
 </qti-test-part>
 ```
 
-Items remain `time-dependent="false"`. Item-level `time-dependent` is not used
-for package timing; it is for time-dependent scoring behavior and is
-independent from the test-part time limit.
+Items remain `time-dependent="false"`. Item-level `time-dependent` is not an
+individual question time limit; it is for time-dependent scoring behavior and
+is independent from the test-part time limit.
 
 ## Assessment Items
 

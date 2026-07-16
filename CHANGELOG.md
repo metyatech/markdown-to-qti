@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `time_budget_seconds` is now optional in question frontmatter and remains a
+  positive integer when present. Manifest `time_limit_seconds` takes
+  precedence; otherwise all specified item budgets are summed, all-omitted
+  budgets omit QTI time limits, and mixed presence is rejected.
 - Manifests are parsed as strict YAML. Each item is a mapping with `id`, `ref`,
   and optional `points`; the item `id` sets the QTI item identifier and output
   file name. Bare string items and the removed `type` key are rejected.

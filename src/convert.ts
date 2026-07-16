@@ -68,7 +68,7 @@ interface MarkdownQuestion {
 
 interface QuestionFrontmatter {
   questionType: QuestionType;
-  timeBudgetSeconds: number;
+  timeBudgetSeconds: number | null;
 }
 
 const ALLOWED_SECTION_NAMES = new Set(["Type", "Prompt", "Options", "Explanation", "Scoring"]);
@@ -361,12 +361,15 @@ function parseQuestionFrontmatter(lines: string[], sourcePath: string | null): Q
     default:
       throw new Error(`Unknown question_type: ${typeValue}`);
   }
-  const timeBudgetSeconds = parsePositiveInt(
-    values.time_budget_seconds as string | number | undefined,
-    "time_budget_seconds",
-    sourcePath,
-    2
-  );
+  const timeBudgetSeconds =
+    "time_budget_seconds" in values
+      ? parsePositiveInt(
+          values.time_budget_seconds as string | number | undefined,
+          "time_budget_seconds",
+          sourcePath,
+          2
+        )
+      : null;
   return { questionType, timeBudgetSeconds };
 }
 

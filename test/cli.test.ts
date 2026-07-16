@@ -102,6 +102,121 @@ test("cli manifest writes ordered package with summed time limit", async () => {
   }
 });
 
+test("cli manifest uses an explicit time limit when all questions omit time budgets", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    const outputDir = path.join(tempDir, "out");
+    writeFileSync(path.join(tempDir, "first.md"), untimedQuestion("First"), "utf8");
+    writeFileSync(path.join(tempDir, "second.md"), untimedQuestion("Second"), "utf8");
+    const manifestPath = writeManifest(tempDir, [
+      "title: Explicit time limit",
+      "time_limit_seconds: 5400",
+      "items:",
+      "  - id: first",
+      "    ref: ./first.md",
+      "  - id: second",
+      "    ref: ./second.md"
+    ]);
+
+    const exitCode = runCli(["--manifest", manifestPath, "--output-dir", outputDir]);
+
+    assert.equal(exitCode, 0);
+    assert.match(
+      readFileSync(path.join(outputDir, "assessment-test.qti.xml"), "utf8"),
+      /<qti-time-limits max-time="5400"\/>/u
+    );
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test("cli manifest sums time budgets when every question specifies one", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    const outputDir = path.join(tempDir, "out");
+    writeFileSync(path.join(tempDir, "first.md"), timedQuestion("First", 20), "utf8");
+    writeFileSync(path.join(tempDir, "second.md"), timedQuestion("Second", 35), "utf8");
+    const manifestPath = writeManifest(tempDir, [
+      "title: Summed time limit",
+      "items:",
+      "  - id: first",
+      "    ref: ./first.md",
+      "  - id: second",
+      "    ref: ./second.md"
+    ]);
+
+    const exitCode = runCli(["--manifest", manifestPath, "--output-dir", outputDir]);
+
+    assert.equal(exitCode, 0);
+    assert.match(
+      readFileSync(path.join(outputDir, "assessment-test.qti.xml"), "utf8"),
+      /<qti-time-limits max-time="55"\/>/u
+    );
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test("cli manifest omits qti-time-limits when every question omits time budgets", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    const outputDir = path.join(tempDir, "out");
+    writeFileSync(path.join(tempDir, "first.md"), untimedQuestion("First"), "utf8");
+    writeFileSync(path.join(tempDir, "second.md"), untimedQuestion("Second"), "utf8");
+    const manifestPath = writeManifest(tempDir, [
+      "title: Untimed assessment",
+      "items:",
+      "  - id: first",
+      "    ref: ./first.md",
+      "  - id: second",
+      "    ref: ./second.md"
+    ]);
+
+    const exitCode = runCli(["--manifest", manifestPath, "--output-dir", outputDir]);
+
+    assert.equal(exitCode, 0);
+    assert.doesNotMatch(
+      readFileSync(path.join(outputDir, "assessment-test.qti.xml"), "utf8"),
+      /<qti-time-limits/u
+    );
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
+test("cli manifest rejects mixed present and omitted time budgets without a manifest time limit", async () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
+  try {
+    const outputDir = path.join(tempDir, "out");
+    writeFileSync(path.join(tempDir, "timed.md"), timedQuestion("Timed", 20), "utf8");
+    writeFileSync(path.join(tempDir, "untimed.md"), untimedQuestion("Untimed"), "utf8");
+    const manifestPath = writeManifest(tempDir, [
+      "title: Mixed time budgets",
+      "items:",
+      "  - id: timed",
+      "    ref: ./timed.md",
+      "  - id: untimed",
+      "    ref: ./untimed.md"
+    ]);
+    const stderr = captureStream();
+
+    const exitCode = runCli(
+      ["--manifest", manifestPath, "--output-dir", outputDir],
+      devNullStream(),
+      stderr.stream
+    );
+
+    assert.equal(exitCode, 1);
+    assert.match(
+      stderr.text(),
+      /time_limit_secondsのないmanifestでは、time_budget_secondsあり／なしを混在できない/u
+    );
+    assert.equal(existsSync(outputDir), false);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+});
+
 test("cli manifest reads plain object items without points", async () => {
   const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
   try {
@@ -351,10 +466,27 @@ function writeFixtureCopy(dir: string, fixtureId: string): void {
 }
 
 function plainQuestion(title: string): string {
+  return timedQuestion(title, 60);
+}
+
+function timedQuestion(title: string, timeBudgetSeconds: number): string {
   return [
     "---",
     "question_type: descriptive",
-    "time_budget_seconds: 60",
+    `time_budget_seconds: ${timeBudgetSeconds}`,
+    "---",
+    `# ${title}`,
+    "",
+    "## Prompt",
+    "Explain something.",
+    ""
+  ].join("\n");
+}
+
+function untimedQuestion(title: string): string {
+  return [
+    "---",
+    "question_type: descriptive",
     "---",
     `# ${title}`,
     "",

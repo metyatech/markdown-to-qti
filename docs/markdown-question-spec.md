@@ -31,8 +31,12 @@ Which number is prime?
 Required frontmatter:
 
 - `question_type`: one of `descriptive`, `choice`, or `cloze`.
-- `time_budget_seconds`: positive integer seconds. Used to resolve the
-  manifest time limit when the manifest does not provide `time_limit_seconds`.
+
+Optional frontmatter:
+
+- `time_budget_seconds`: when present, a positive integer number of seconds.
+  It is used to resolve the manifest time limit only when the manifest does not
+  provide `time_limit_seconds`.
 
 Additional authoring metadata:
 
@@ -138,14 +142,17 @@ rejected. Error messages include the manifest path and line number.
 Optional:
 
 - `time_limit_seconds`: positive integer seconds. If omitted, the resolved time
-  limit is the sum of all item `time_budget_seconds` values. The generated QTI
-  package emits the resolved limit as the integer number of seconds in
-  `qti-time-limits` `max-time`, for example `300` seconds becomes
-  `max-time="300"`.
+  limit is the sum of all item `time_budget_seconds` values when every item
+  specifies one. When every item omits `time_budget_seconds`, the generated
+  QTI assessment test omits `qti-time-limits`. A mix of present and omitted
+  item time budgets without `time_limit_seconds` is rejected. An explicit
+  `time_limit_seconds` takes precedence over all item time budgets. A generated
+  time limit is emitted as the integer number of seconds in `qti-time-limits`
+  `max-time`, for example `300` seconds becomes `max-time="300"`.
 
 The generated assessment items keep `time-dependent="false"`. That item
-attribute describes whether scoring is time dependent; it is separate from the
-package time limit. Package timing is represented only by the assessment test
+attribute describes whether scoring is time dependent; it is not an individual
+question time limit. Package timing is represented only by the assessment test
 `qti-time-limits` element.
 
 Removed:

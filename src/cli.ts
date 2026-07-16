@@ -51,6 +51,11 @@ interface ManifestSpec {
   items: ManifestItemSpec[];
 }
 
+interface ConvertedManifestItem {
+  item: ManifestItemSpec;
+  conversion: QtiConversionResult;
+}
+
 interface ConversionInputSource {
   identifier: string;
   displayName: string;
@@ -248,8 +253,7 @@ function runManifestCli(
   const outputDir = path.normalize(parsed.outputDir ?? defaultOutputDirFor(manifestPath));
   const generatedFiles: string[] = [];
   const itemRefs: AssessmentItemRef[] = [];
-  let summedTimeBudget = 0;
-  if (!parsed.validateOnly) mkdirSync(outputDir, { recursive: true });
+  const convertedItems: ConvertedManifestItem[] = [];
 
   for (const item of manifest.items) {
     const refPath = item.resolvedPath;
@@ -262,7 +266,20 @@ function runManifestCli(
       writeln(error, exception instanceof Error ? exception.message : String(exception));
       return 1;
     }
-    summedTimeBudget += conversion.timeBudgetSeconds ?? 0;
+    convertedItems.push({ item, conversion });
+  }
+
+  let resolvedTimeLimit: number | null;
+  try {
+    resolvedTimeLimit = resolveManifestTimeLimit(manifest.timeLimitSeconds, convertedItems);
+  } catch (exception) {
+    writeln(error, exception instanceof Error ? exception.message : String(exception));
+    return 1;
+  }
+
+  if (!parsed.validateOnly) mkdirSync(outputDir, { recursive: true });
+  for (const { item, conversion } of convertedItems) {
+    const refPath = item.resolvedPath;
     if (parsed.validateOnly) {
       if (parsed.verbose) writeln(output, `Validated: ${refPath}`);
     } else {
@@ -276,7 +293,6 @@ function runManifestCli(
     }
     itemRefs.push({ identifier: item.id, href: `${item.id}.qti.xml` });
   }
-  const resolvedTimeLimit = manifest.timeLimitSeconds ?? summedTimeBudget;
   if (!parsed.validateOnly) {
     const assessmentXml = buildAssessmentTest(itemRefs, manifest.title, resolvedTimeLimit);
     const assessmentFile = path.join(outputDir, "assessment-test.qti.xml");
@@ -286,6 +302,27 @@ function runManifestCli(
   }
   if (parsed.json) writeJsonSummary(output, generatedFiles);
   return 0;
+}
+
+function resolveManifestTimeLimit(
+  manifestTimeLimitSeconds: number | null,
+  convertedItems: ConvertedManifestItem[]
+): number | null {
+  if (manifestTimeLimitSeconds !== null) return manifestTimeLimitSeconds;
+
+  const specifiedTimeBudgets = convertedItems.filter(
+    ({ conversion }) => conversion.timeBudgetSeconds !== null
+  );
+  if (specifiedTimeBudgets.length === 0) return null;
+  if (specifiedTimeBudgets.length !== convertedItems.length) {
+    throw new Error(
+      "time_limit_secondsのないmanifestでは、time_budget_secondsあり／なしを混在できない"
+    );
+  }
+  return specifiedTimeBudgets.reduce(
+    (sum, { conversion }) => sum + (conversion.timeBudgetSeconds ?? 0),
+    0
+  );
 }
 
 const MANIFEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/u;

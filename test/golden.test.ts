@@ -72,6 +72,50 @@ test("allows nested authoring metadata in frontmatter", () => {
   assert.match(result.qtiXml, /title="Nested Metadata"/u);
   assert.match(result.qtiXml, /Correct/u);
 });
+
+test("allows frontmatter without time_budget_seconds", () => {
+  const result = convertMarkdownToQtiWithAssets(
+    [
+      "---",
+      "question_type: descriptive",
+      "---",
+      "# Untimed descriptive question",
+      "",
+      "## Prompt",
+      "Describe the result.",
+      ""
+    ].join("\n"),
+    "untimed-descriptive",
+    path.resolve("untimed-descriptive.q.md")
+  );
+
+  assert.equal(result.timeBudgetSeconds, null);
+  assert.match(result.qtiXml, /title="Untimed descriptive question"/u);
+});
+
+test("rejects non-positive or non-integer time_budget_seconds", () => {
+  for (const value of ["0", "-1", "1.5"]) {
+    assert.throws(
+      () =>
+        convertMarkdownToQti(
+          [
+            "---",
+            "question_type: descriptive",
+            `time_budget_seconds: ${value}`,
+            "---",
+            "# Invalid time",
+            "",
+            "## Prompt",
+            "Describe the result.",
+            ""
+          ].join("\n"),
+          `invalid-time-${value}`
+        ),
+      /time_budget_seconds must be a positive integer/u
+    );
+  }
+});
+
 test("rejects non-comment raw HTML blocks", () => {
   assert.throws(
     () =>

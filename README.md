@@ -116,8 +116,11 @@ item `id`), copies referenced local images, and writes
   `points` array.
 - Manifest `time_limit_seconds` is authored as an integer number of seconds and
   is emitted as the QTI test-part time limit, for example
-  `<qti-time-limits max-time="300"/>`. If omitted, the limit is the sum of item
-  `time_budget_seconds` values.
+  `<qti-time-limits max-time="300"/>`. It takes precedence over item
+  `time_budget_seconds` values. Without it, all item time budgets are summed
+  when every item specifies one; when every item omits one, no
+  `qti-time-limits` is emitted. Mixed present and omitted item time budgets are
+  rejected.
 - `--manifest` cannot be combined with `--input`.
 - When `--input` is a directory, all `*.md` files inside it are processed.
 - When `--input` is `-`, the CLI reads from stdin. The identifier defaults to
@@ -142,7 +145,6 @@ Question files use required YAML frontmatter:
 ```markdown
 ---
 question_type: descriptive
-time_budget_seconds: 60
 ---
 
 # Question title
@@ -152,8 +154,10 @@ time_budget_seconds: 60
 Question prompt.
 ```
 
-Supported `question_type` values are `descriptive`, `choice`, and `cloze`. The
-old `## Type` section is deprecated and not part of the canonical format.
+Supported `question_type` values are `descriptive`, `choice`, and `cloze`.
+`time_budget_seconds` is optional; when present, it must be a positive integer
+number of seconds. The old `## Type` section is deprecated and not part of the
+canonical format.
 
 Additional frontmatter keys are allowed for authoring metadata, including nested
 YAML mappings. The converter reads only `question_type` and
