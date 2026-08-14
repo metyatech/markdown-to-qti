@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- HAST conversion and XML-safe HTML serialization dependencies.
+- HAST conversion and XML-native XAST serialization dependencies.
 
 ## [Unreleased]
 

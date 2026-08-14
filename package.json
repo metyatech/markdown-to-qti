@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "hast-util-raw": "^9.1.0",
-    "hast-util-to-html": "^9.0.5",
+    "hast-util-to-xast": "^3.0.1",
     "mdast-util-from-markdown": "^2.0.2",
     "mdast-util-gfm-strikethrough": "^2.0.0",
     "mdast-util-gfm-table": "^2.0.0",
@@ -55,12 +55,14 @@
     "micromark-extension-gfm-strikethrough": "^2.1.0",
     "micromark-extension-gfm-table": "^2.1.1",
     "micromark-extension-gfm-task-list-item": "^2.1.0",
+    "xast-util-to-xml": "^4.0.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/hast": "^3.0.5",
     "@types/mdast": "^4.0.4",
     "@types/node": "^22.9.0",
+    "@xmldom/xmldom": "^0.9.11",
     "eslint": "^9.14.0",
     "globals": "^15.12.0",
     "prettier": "^3.3.3",

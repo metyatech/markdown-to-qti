@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { convertMarkdownToQti, convertMarkdownToQtiWithAssets } from "../src/convert.js";
+import { assertWellFormedXml } from "./xml-assertions.js";
 
 const fixturesDir = path.resolve("src/test/resources/fixtures");
 
@@ -33,6 +34,7 @@ for (const markdownFixture of markdownFixtures) {
         : convertMarkdownToQtiWithAssets(markdown, fixtureId, markdownPath, { scoringPoints })
             .qtiXml;
 
+    assertWellFormedXml(actual);
     assert.equal(normalizeXml(actual), normalizeXml(expected));
   });
 }

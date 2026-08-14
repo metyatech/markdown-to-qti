@@ -1,9 +1,43 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DOMParser } from "@xmldom/xmldom";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { convertMarkdownToQti, convertMarkdownToQtiWithAssets } from "../src/convert.js";
+import { assertWellFormedXml } from "./xml-assertions.js";
+
+test("serializes a boolean HTML attribute as an XML-valued attribute", () => {
+  const xml = convertMarkdownToQti(
+    question("descriptive", '<input type="text" disabled>'),
+    "boolean-attribute"
+  );
+
+  assertWellFormedXml(xml);
+  assert.match(xml, /<input type="text" disabled="disabled" \/>/u);
+  assert.doesNotMatch(xml, /<input type="text" disabled(?:\s|\/>)/u);
+});
+
+test("preserves multiple boolean HTML attributes as XML-valued attributes", () => {
+  const xml = convertMarkdownToQti(
+    question("descriptive", "<input disabled readonly required>"),
+    "multiple-boolean-attributes"
+  );
+
+  assertWellFormedXml(xml);
+  assert.match(xml, /disabled="disabled"/u);
+  assert.match(xml, /readonly="readonly"/u);
+  assert.match(xml, /required="required"/u);
+});
+
+test("serializes HTML named entities without undeclared HTML entity references", () => {
+  const xml = convertMarkdownToQti(question("descriptive", "<span>A&nbsp;B</span>"), "nbsp");
+
+  assertWellFormedXml(xml);
+  assert.doesNotMatch(xml, /&nbsp;/u);
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  assert.equal(document.getElementsByTagName("span")[0]?.textContent, "A\u00a0B");
+});
 
 test("preserves inline raw HTML attributes in the presentation", () => {
   const xml = convertMarkdownToQti(
@@ -14,10 +48,29 @@ test("preserves inline raw HTML attributes in the presentation", () => {
     "inline-raw"
   );
 
+  assertWellFormedXml(xml);
+  assert.doesNotMatch(xml, /xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/u);
   assert.match(
     xml,
     /<p>before <span style="display:inline-block;min-width:4em;border:1px solid #000;text-align:center;background:transparent;" class="answer" id="answer-a" title="Answer" data-slot="a" aria-label="answer">A<\/span> after<\/p>/u
   );
+});
+
+test("preserves XML attribute spellings and typed HAST properties", () => {
+  const xml = convertMarkdownToQti(
+    question(
+      "descriptive",
+      '<label for="answer" class="label primary" data-index="7" aria-label="answer">Answer</label><ol start="3"><li>Three</li></ol>'
+    ),
+    "typed-properties"
+  );
+
+  assertWellFormedXml(xml);
+  assert.match(
+    xml,
+    /<label for="answer" class="label primary" data-index="7" aria-label="answer">Answer<\/label>/u
+  );
+  assert.match(xml, /<ol start="3"><li>Three<\/li><\/ol>/u);
 });
 
 test("preserves block raw HTML and mixed Markdown structure", () => {
@@ -73,7 +126,7 @@ test("renders Markdown presentation with bare HTML tags", () => {
   assert.match(xml, /<ul>[\s\S]*<li>one<\/li>[\s\S]*<\/ul>/u);
   assert.match(
     xml,
-    /<pre><code class="language-text">&lt;span>escaped&lt;\/span>\n<\/code><\/pre>/u
+    /<pre><code class="language-text">&#x3C;span>escaped&#x3C;\/span>\n<\/code><\/pre>/u
   );
   assert.match(xml, /<hr \/>/u);
   assert.doesNotMatch(
@@ -97,7 +150,7 @@ test("preserves authored rich pre/code HTML and exact text newlines", () => {
 
   assert.match(
     xml,
-    /<pre><code>&lt;html>\nfoo <span style="display:inline-block;min-width:4em;border:1px solid #000;text-align:center;background:transparent;">A<\/span> bar\n&lt;\/html><\/code><\/pre>/u
+    /<pre><code>&#x3C;html>\nfoo <span style="display:inline-block;min-width:4em;border:1px solid #000;text-align:center;background:transparent;">A<\/span> bar\n&#x3C;\/html><\/code><\/pre>/u
   );
 });
 
@@ -112,11 +165,11 @@ test("keeps cloze interactions natural inside paragraphs and code", () => {
 
   assert.match(
     xml,
-    /<p>Before <qti-text-entry-interaction response-identifier="RESPONSE_1"><\/qti-text-entry-interaction>\.<\/p>/u
+    /<p>Before <qti-text-entry-interaction response-identifier="RESPONSE_1" \/>\.<\/p>/u
   );
   assert.match(
     xml,
-    /<pre><code>before <qti-text-entry-interaction response-identifier="RESPONSE_2"><\/qti-text-entry-interaction> after<\/code><\/pre>/u
+    /<pre><code>before <qti-text-entry-interaction response-identifier="RESPONSE_2" \/> after<\/code><\/pre>/u
   );
   assert.match(xml, /<qti-value>answer<\/qti-value>/u);
   assert.match(xml, /<qti-value>code-answer<\/qti-value>/u);

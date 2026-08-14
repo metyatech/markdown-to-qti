@@ -7,9 +7,11 @@ import { gfmStrikethrough } from "micromark-extension-gfm-strikethrough";
 import { gfmTable } from "micromark-extension-gfm-table";
 import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item";
 import { raw } from "hast-util-raw";
-import { toHtml } from "hast-util-to-html";
+import { toXast } from "hast-util-to-xast";
+import { toXml } from "xast-util-to-xml";
 import type { Element, Nodes, Parent, Root as HastRoot, RootContent } from "hast";
 import type { ListItem, Root as MdastRoot } from "mdast";
+import type { Element as XastElement, Nodes as XastNodes, Root as XastRoot } from "xast";
 
 export type ClozeHandling = "enabled" | "disabled";
 
@@ -42,11 +44,35 @@ export interface ChoiceOption {
 const CLOZE_ESC_OPEN_TOKEN = "__CLOZE_ESC_OPEN__";
 const CLOZE_ESC_CLOSE_TOKEN = "__CLOZE_ESC_CLOSE__";
 
-const XML_SERIALIZER_OPTIONS = {
-  closeSelfClosing: true,
-  tightSelfClosing: false,
-  characterReferences: { useNamedReferences: true }
-} as const;
+const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+const XML_SERIALIZER_OPTIONS = { closeEmptyElements: true, tightClose: false } as const;
+const XML_BOOLEAN_ATTRIBUTES = new Set([
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "defer",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "inert",
+  "ismap",
+  "itemscope",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "selected"
+]);
 
 export function isRemoteImagePath(source: string): boolean {
   const normalized = source.toLowerCase();
@@ -234,7 +260,55 @@ function prepareHast(tree: Nodes, taskListMode: "normal" | "choice"): HastRoot {
 }
 
 function serialize(nodes: RootContent[]): string {
-  return toHtml(nodes, XML_SERIALIZER_OPTIONS);
+  const source: HastRoot = { type: "root", children: nodes };
+  const tree = toXast(source) as XastRoot;
+  removeGeneratedHtmlNamespace(tree, source);
+  normalizeBooleanAttributes(tree);
+  return toXml(tree, XML_SERIALIZER_OPTIONS);
+}
+
+function removeGeneratedHtmlNamespace(tree: XastRoot, source: HastRoot): void {
+  tree.children.forEach((xastNode, index) => {
+    const hastNode = source.children[index];
+    if (xastNode.type === "element" && hastNode?.type === "element") {
+      removeGeneratedHtmlNamespaceFromElement(xastNode, hastNode);
+    }
+  });
+}
+
+function removeGeneratedHtmlNamespaceFromElement(
+  xastElement: XastElement,
+  hastElement: Element
+): void {
+  if (
+    xastElement.attributes.xmlns === HTML_NAMESPACE &&
+    hastElement.properties.xmlns !== HTML_NAMESPACE
+  ) {
+    delete xastElement.attributes.xmlns;
+  }
+  xastElement.children.forEach((xastChild, index) => {
+    const hastChild = hastElement.children[index];
+    if (xastChild.type === "element" && hastChild?.type === "element") {
+      removeGeneratedHtmlNamespaceFromElement(xastChild, hastChild);
+    }
+  });
+}
+
+function normalizeBooleanAttributes(node: XastNodes): void {
+  if (node.type === "element") {
+    for (const name of XML_BOOLEAN_ATTRIBUTES) {
+      if (node.attributes[name] === "") {
+        node.attributes[name] = name;
+      }
+    }
+    for (const child of node.children) {
+      normalizeBooleanAttributes(child);
+    }
+  } else if (node.type === "root") {
+    for (const child of node.children) {
+      normalizeBooleanAttributes(child);
+    }
+  }
 }
 
 function removeComments(parent: Parent): void {

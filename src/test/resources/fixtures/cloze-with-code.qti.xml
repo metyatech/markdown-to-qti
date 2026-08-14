@@ -16,7 +16,7 @@
     </qti-correct-response>
   </qti-response-declaration>
   <qti-item-body>
-<p>Fill code: <code>const total = <qti-text-entry-interaction response-identifier="RESPONSE_1"></qti-text-entry-interaction>;</code></p><pre><code>return <qti-text-entry-interaction response-identifier="RESPONSE_2"></qti-text-entry-interaction>;
+<p>Fill code: <code>const total = <qti-text-entry-interaction response-identifier="RESPONSE_1" />;</code></p><pre><code>return <qti-text-entry-interaction response-identifier="RESPONSE_2" />;
 </code></pre>
   </qti-item-body>
 </qti-assessment-item>
