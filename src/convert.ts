@@ -792,7 +792,7 @@ function buildItemBody(question: MarkdownQuestion): string {
     builder += '    <qti-rubric-block view="scorer">\n';
     question.scoring.forEach((criterion) => {
       const points = formatDecimal(criterion.points);
-      builder += `      <qti-p>[${escapeXml(points)}] ${criterion.criterionXml}</qti-p>\n`;
+      builder += `      <p>[${escapeXml(points)}] ${criterion.criterionXml}</p>\n`;
     });
     builder += "    </qti-rubric-block>\n";
   }

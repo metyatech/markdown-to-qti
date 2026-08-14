@@ -15,6 +15,8 @@ const scoringPointsByFixture: Record<string, number[]> = {
   "cloze-with-scoring": [1],
   "descriptive-with-scoring": [2, 1]
 };
+const RETIRED_PRESENTATION_ALIAS_PATTERN =
+  /<qti-(?:p|h[1-6]|div|em|strong|del|a|blockquote|ul|ol|li|pre|code|table|thead|tbody|tfoot|tr|th|td|img|br|hr)(?:\s|\/?>)/u;
 
 const markdownFixtures = readdirSync(fixturesDir)
   .filter((name) => name.endsWith(".md"))
@@ -35,6 +37,7 @@ for (const markdownFixture of markdownFixtures) {
             .qtiXml;
 
     assertWellFormedXml(actual);
+    assert.doesNotMatch(actual, RETIRED_PRESENTATION_ALIAS_PATTERN);
     assert.equal(normalizeXml(actual), normalizeXml(expected));
   });
 }

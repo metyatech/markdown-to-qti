@@ -102,7 +102,8 @@ test("cli manifest writes ordered package with summed time limit", async () => {
     assert.match(firstItemXml, /identifier="q1"/u);
     assert.match(secondItemXml, /identifier="q2"/u);
     // Points supplied by the manifest still drive the scoring rubric.
-    assert.match(firstItemXml, /<qti-p>\[2\] Selects the only prime number<\/qti-p>/u);
+    assert.match(firstItemXml, /<p>\[2\] Selects the only prime number<\/p>/u);
+    assert.doesNotMatch(firstItemXml, /<qti-p\b/u);
 
     const assessmentTest = readFileSync(path.join(outputDir, "assessment-test.qti.xml"), "utf8");
     assert.match(assessmentTest, /<qti-time-limits max-time="180"\/>/u);

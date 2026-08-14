@@ -24,8 +24,8 @@
       <qti-simple-choice identifier="CHOICE_3">21</qti-simple-choice>
     </qti-choice-interaction>
     <qti-rubric-block view="scorer">
-      <qti-p>[2] Selects the only prime number</qti-p>
-      <qti-p>[1] Avoids selecting a composite number</qti-p>
+      <p>[2] Selects the only prime number</p>
+      <p>[1] Avoids selecting a composite number</p>
     </qti-rubric-block>
   </qti-item-body>
 </qti-assessment-item>

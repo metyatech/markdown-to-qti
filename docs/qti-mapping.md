@@ -117,8 +117,10 @@ Given criteria plus manifest points, `## Scoring` maps to:
 - `qti-outcome-declaration identifier="MAXSCORE"`, `cardinality="single"`,
   `base-type="float"`, with a default `qti-value` equal to the sum of the
   manifest point values.
-- `qti-rubric-block view="scorer"` with one `qti-p` per criterion, formatted as
-  `[<points>] <criterion>`, where `<points>` is the manifest point value.
+- `qti-rubric-block view="scorer"` (a QTI-specific element) with one standard
+  HTML `p` element per criterion, formatted as `[<points>] <criterion>`, where
+  `<points>` is the manifest point value. Criterion content remains rich
+  presentation HTML, such as `strong` and `code` elements.
 
 Scoring response-processing is deferred and is not emitted. Generated items do
 not set `SCORE` from `## Scoring` yet.
