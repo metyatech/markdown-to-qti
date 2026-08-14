@@ -13,7 +13,7 @@
     </qti-default-value>
   </qti-outcome-declaration>
   <qti-item-body>
-    <qti-p>Explain the role of chlorophyll in photosynthesis.</qti-p>
+<p>Explain the role of chlorophyll in photosynthesis.</p>
     <qti-extended-text-interaction response-identifier="RESPONSE"/>
     <qti-rubric-block view="scorer">
       <qti-p>[2] Identifies chlorophyll as a light-absorbing pigment</qti-p>

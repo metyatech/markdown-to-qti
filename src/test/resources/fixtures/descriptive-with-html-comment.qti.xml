@@ -8,9 +8,7 @@
   <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
   <qti-outcome-declaration identifier="FEEDBACK" cardinality="single" base-type="identifier"/>
   <qti-item-body>
-    <qti-p>Visible prompt.</qti-p>
-    <qti-p>Visible continuation.</qti-p>
-    <qti-p>Visible inline.</qti-p>
+<p>Visible prompt.</p><p>Visible continuation.</p><p>Visible inline.</p>
     <qti-extended-text-interaction response-identifier="RESPONSE"/>
   </qti-item-body>
   <qti-response-processing>
@@ -20,7 +18,7 @@
   </qti-response-processing>
   <qti-modal-feedback outcome-identifier="FEEDBACK" identifier="EXPLANATION" show-hide="show">
     <qti-content-body>
-    <qti-p>Visible explanation.</qti-p>
+<p>Visible explanation.</p>
     </qti-content-body>
   </qti-modal-feedback>
 </qti-assessment-item>

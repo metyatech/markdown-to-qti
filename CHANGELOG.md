@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-14
+
+### Changed
+
+- **Breaking:** Markdown presentation content now uses ordinary HTML element
+  names instead of the retired `qti-*` presentation aliases.
+- Markdown and normal raw HTML can be mixed. Raw HTML is parsed into the shared
+  HAST pipeline, HTML comments are omitted, and authored attributes are
+  preserved.
+- Cloze interactions are inserted into normalized HAST text nodes, including
+  normal paragraphs, spans, and code.
+
+### Added
+
+- HAST conversion and XML-safe HTML serialization dependencies.
+
 ## [Unreleased]
 
 ### Changed

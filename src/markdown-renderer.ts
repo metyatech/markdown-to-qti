@@ -2,25 +2,14 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmStrikethroughFromMarkdown } from "mdast-util-gfm-strikethrough";
 import { gfmTableFromMarkdown } from "mdast-util-gfm-table";
 import { gfmTaskListItemFromMarkdown } from "mdast-util-gfm-task-list-item";
+import { toHast } from "mdast-util-to-hast";
 import { gfmStrikethrough } from "micromark-extension-gfm-strikethrough";
 import { gfmTable } from "micromark-extension-gfm-table";
 import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item";
-import type {
-  AlignType,
-  Html,
-  Image,
-  Link,
-  List,
-  ListItem,
-  Nodes,
-  Paragraph,
-  Parent,
-  RootContent,
-  Table,
-  TableCell
-} from "mdast";
-
-import { escapeXml } from "./escape-xml.js";
+import { raw } from "hast-util-raw";
+import { toHtml } from "hast-util-to-html";
+import type { Element, Nodes, Parent, Root as HastRoot, RootContent } from "hast";
+import type { ListItem, Root as MdastRoot } from "mdast";
 
 export type ClozeHandling = "enabled" | "disabled";
 
@@ -47,12 +36,17 @@ export interface ChoiceOption {
   contentXml: string;
   isCorrect: boolean;
   localImages: string[];
+  isBlockContent: boolean;
 }
 
 const CLOZE_ESC_OPEN_TOKEN = "__CLOZE_ESC_OPEN__";
 const CLOZE_ESC_CLOSE_TOKEN = "__CLOZE_ESC_CLOSE__";
-const MIN_HEADING_LEVEL = 1;
-const MAX_HEADING_LEVEL = 6;
+
+const XML_SERIALIZER_OPTIONS = {
+  closeSelfClosing: true,
+  tightSelfClosing: false,
+  characterReferences: { useNamedReferences: true }
+} as const;
 
 export function isRemoteImagePath(source: string): boolean {
   const normalized = source.toLowerCase();
@@ -63,7 +57,7 @@ export function isRemoteImagePath(source: string): boolean {
   );
 }
 
-function parseMarkdown(text: string): Parent {
+function parseMarkdown(text: string): MdastRoot {
   return fromMarkdown(text, {
     extensions: [gfmTable(), gfmStrikethrough({ singleTilde: false }), gfmTaskListItem()],
     mdastExtensions: [
@@ -72,11 +66,6 @@ function parseMarkdown(text: string): Parent {
       gfmTaskListItemFromMarkdown()
     ]
   });
-}
-
-function childrenOf(node: unknown): RootContent[] {
-  const parent = node as Partial<Parent>;
-  return Array.isArray(parent.children) ? (parent.children as RootContent[]) : [];
 }
 
 interface RenderState {
@@ -94,21 +83,13 @@ export class MarkdownQtiRenderer {
     context: RenderContext,
     clozeHandling: ClozeHandling
   ): RenderedMarkdown {
-    const normalized = clozeHandling === "enabled" ? preprocessClozeEscapes(markdown) : markdown;
-    const document = parseMarkdown(normalized);
+    const document = this.renderHast(markdown, clozeHandling, "normal");
     const clozeBlanks = clozeHandling === "enabled" ? collectClozeBlanks(document) : [];
-    const state: RenderState = {
-      clozeHandling,
-      responseIds: responseIdsFor(clozeBlanks),
-      blankIndex: 0,
-      localImages: []
-    };
-    let builder = "";
-    for (const child of childrenOf(document)) {
-      builder += this.renderBlock(child, context, state);
-    }
+    const state = createRenderState(clozeHandling, clozeBlanks);
+    transformClozeTextNodes(document, state);
+    collectLocalImages(document, state);
     return {
-      xml: builder.replace(/\s+$/u, ""),
+      xml: serialize(document.children).replace(/\s+$/u, ""),
       localImages: distinct(state.localImages),
       clozeBlanks
     };
@@ -120,30 +101,36 @@ export class MarkdownQtiRenderer {
     clozeHandling: ClozeHandling
   ): RenderedMarkdown {
     const normalized = clozeHandling === "enabled" ? preprocessClozeEscapes(markdown) : markdown;
-    const document = parseMarkdown(normalized);
-    const blocks = childrenOf(document);
+    const mdast = parseMarkdown(normalized);
+    const blocks = mdast.children;
     const paragraph = blocks[0];
     if (paragraph === undefined || paragraph.type !== "paragraph" || blocks.length > 1) {
       throw unsupported(
         "Inline content must not contain block elements",
         context,
-        paragraph ?? document
+        paragraph ?? mdast
       );
     }
+
+    const document = prepareHast(toHast(mdast, { allowDangerousHtml: true }), "normal");
+    const paragraphElement = document.children[0];
+    if (paragraphElement?.type !== "element" || paragraphElement.tagName !== "p") {
+      throw unsupported("Inline content did not produce a paragraph", context, paragraph);
+    }
     const clozeBlanks = clozeHandling === "enabled" ? collectClozeBlanks(document) : [];
-    const state: RenderState = {
-      clozeHandling,
-      responseIds: responseIdsFor(clozeBlanks),
-      blankIndex: 0,
-      localImages: []
+    const state = createRenderState(clozeHandling, clozeBlanks);
+    transformClozeTextNodes(document, state);
+    collectLocalImages(document, state);
+    return {
+      xml: serialize(paragraphElement.children),
+      localImages: distinct(state.localImages),
+      clozeBlanks
     };
-    const xml = this.renderInlineChildren(paragraph, context, state);
-    return { xml, localImages: distinct(state.localImages), clozeBlanks };
   }
 
   renderChoiceOptions(markdown: string, context: RenderContext): ChoiceOption[] {
     const document = parseMarkdown(markdown);
-    const topLevelBlocks = childrenOf(document);
+    const topLevelBlocks = document.children;
     if (topLevelBlocks.length === 0) {
       return [];
     }
@@ -155,8 +142,9 @@ export class MarkdownQtiRenderer {
         listBlock ?? document
       );
     }
+
     const options: ChoiceOption[] = [];
-    for (const node of childrenOf(listBlock)) {
+    for (const node of listBlock.children) {
       if (node.type !== "listItem") {
         throw unsupported("Options must be a list of task items", context, node);
       }
@@ -167,320 +155,236 @@ export class MarkdownQtiRenderer {
       if (containsNestedList(listItem)) {
         throw unsupported("Options must be a single flat list (no nesting)", context, listItem);
       }
-      const state: RenderState = {
-        clozeHandling: "disabled",
-        responseIds: [],
-        blankIndex: 0,
-        localImages: []
-      };
-      const itemXml = this.renderChoiceContent(listItem, context, state);
-      if (itemXml.trim() === "") {
+
+      const optionDocument = this.renderChoiceHast(listItem);
+      const optionElement = optionDocument.children[0];
+      if (optionElement?.type !== "element" || optionElement.tagName !== "li") {
+        throw unsupported("Option did not produce a list item", context, listItem);
+      }
+      const state = createRenderState("disabled", []);
+      transformClozeTextNodes(optionDocument, state);
+      collectLocalImages(optionDocument, state);
+
+      const firstChild = optionElement.children[0];
+      const isSingleParagraph =
+        optionElement.children.length === 1 &&
+        firstChild?.type === "element" &&
+        firstChild.tagName === "p";
+      const isInlineContent = optionElement.children.every(
+        (child) => child.type !== "element" || !isBlockElement(child.tagName)
+      );
+      const contentNodes = isSingleParagraph
+        ? (firstChild as Element).children
+        : optionElement.children;
+      const contentXml = serialize(contentNodes).trim();
+      if (contentXml === "") {
         throw unsupported("Option text must not be empty", context, listItem);
       }
       options.push({
-        contentXml: itemXml.trim(),
+        contentXml,
         isCorrect: listItem.checked === true,
-        localImages: distinct(state.localImages)
+        localImages: distinct(state.localImages),
+        isBlockContent: !isInlineContent
       });
     }
     return options;
   }
 
-  private renderBlock(node: RootContent, context: RenderContext, state: RenderState): string {
-    switch (node.type) {
-      case "paragraph":
-        return this.renderParagraph(node, context, state, null);
-      case "heading": {
-        const level = clamp(node.depth, MIN_HEADING_LEVEL, MAX_HEADING_LEVEL);
-        return `<qti-h${level}>${this.renderInlineChildren(node, context, state)}</qti-h${level}>\n`;
-      }
-      case "blockquote":
-        return `<qti-blockquote>\n${this.renderChildren(node, context, state)}</qti-blockquote>\n`;
-      case "list":
-        return this.renderList(node, context, state);
-      case "code":
-        return this.renderCodeBlock(codeLiteral(node.value), state);
-      case "thematicBreak":
-        return "<qti-hr/>\n";
-      case "html":
-        if (isHtmlComment(node)) {
-          return "";
-        }
-        throw unsupported("Raw HTML blocks are not supported in QTI output", context, node);
-      case "table":
-        return this.renderTable(node, context, state);
-      case "definition":
-        return "";
-      default:
-        throw unsupported(`Unsupported block element: ${node.type}`, context, node);
-    }
+  private renderHast(
+    markdown: string,
+    clozeHandling: ClozeHandling,
+    taskListMode: "normal" | "choice"
+  ): HastRoot {
+    const normalized = clozeHandling === "enabled" ? preprocessClozeEscapes(markdown) : markdown;
+    return prepareHast(
+      toHast(parseMarkdown(normalized), { allowDangerousHtml: true }),
+      taskListMode
+    );
   }
 
-  private renderChildren(node: Parent, context: RenderContext, state: RenderState): string {
-    let builder = "";
-    for (const child of childrenOf(node)) {
-      builder += this.renderBlock(child, context, state);
-    }
-    return builder;
-  }
-
-  private renderParagraph(
-    node: Paragraph,
-    context: RenderContext,
-    state: RenderState,
-    prefix: string | null
-  ): string {
-    let builder = "<qti-p>";
-    if (prefix !== null && prefix !== "") {
-      builder += escapeXml(prefix);
-    }
-    builder += this.renderInlineChildren(node, context, state);
-    builder += "</qti-p>\n";
-    return builder;
-  }
-
-  private renderList(node: List, context: RenderContext, state: RenderState): string {
-    const tag = node.ordered === true ? "qti-ol" : "qti-ul";
-    let builder = `<${tag}`;
-    if (node.ordered === true) {
-      const start = node.start ?? 1;
-      if (start !== 1) {
-        builder += ` start="${start}"`;
-      }
-    }
-    builder += ">\n";
-    for (const child of childrenOf(node)) {
-      if (child.type !== "listItem") {
-        throw unsupported("List must contain list items", context, child);
-      }
-      builder += this.renderListItem(child as ListItem, context, state, true);
-    }
-    builder += `</${tag}>\n`;
-    return builder;
-  }
-
-  private renderListItem(
-    node: ListItem,
-    context: RenderContext,
-    state: RenderState,
-    includeTaskPrefix: boolean
-  ): string {
-    return `<qti-li>\n${this.renderListItemContent(node, context, state, includeTaskPrefix)}</qti-li>\n`;
-  }
-
-  private renderListItemContent(
-    node: ListItem,
-    context: RenderContext,
-    state: RenderState,
-    includeTaskPrefix: boolean
-  ): string {
-    const isTask = node.checked === true || node.checked === false;
-    const prefix = includeTaskPrefix && isTask ? (node.checked === true ? "[x] " : "[ ] ") : null;
-    let builder = "";
-    let usedPrefix = false;
-    for (const child of childrenOf(node)) {
-      if (!usedPrefix && prefix !== null && child.type === "paragraph") {
-        builder += this.renderParagraph(child, context, state, prefix);
-        usedPrefix = true;
-      } else {
-        builder += this.renderBlock(child, context, state);
-      }
-    }
-    if (prefix !== null && !usedPrefix) {
-      builder += this.renderParagraph({ type: "paragraph", children: [] }, context, state, prefix);
-    }
-    return builder;
-  }
-
-  private renderChoiceContent(node: ListItem, context: RenderContext, state: RenderState): string {
-    const children = childrenOf(node);
-    const first = children[0];
-    if (children.length === 1 && first !== undefined && first.type === "paragraph") {
-      return this.renderInlineChildren(first, context, state);
-    }
-    return this.renderListItemContent(node, context, state, false);
-  }
-
-  private renderCodeBlock(literal: string, state: RenderState): string {
-    return `<qti-pre>${this.appendCodeFragments(literal, state)}</qti-pre>\n`;
-  }
-
-  private appendCodeFragments(literal: string, state: RenderState): string {
-    if (state.clozeHandling !== "enabled") {
-      return `<qti-code>${escapeXml(decodeClozeEscapes(literal, state.clozeHandling))}</qti-code>`;
-    }
-    let builder = "";
-    for (const part of parseClozePrompt(literal)) {
-      if (part.kind === "text") {
-        builder += `<qti-code>${escapeXml(decodeClozeEscapes(part.value, state.clozeHandling))}</qti-code>`;
-      } else {
-        builder += this.emitBlankInteraction(state);
-      }
-    }
-    return builder;
-  }
-
-  private renderTable(node: Table, context: RenderContext, state: RenderState): string {
-    const rows = childrenOf(node).filter((child) => child.type === "tableRow");
-    const align = node.align ?? [];
-    let builder = "<qti-table>\n";
-    const headerRow = rows[0];
-    if (headerRow !== undefined) {
-      builder += "<qti-thead>\n";
-      builder += this.renderTableRow(headerRow, align, true, context, state);
-      builder += "</qti-thead>\n";
-    }
-    const bodyRows = rows.slice(1);
-    if (bodyRows.length > 0) {
-      builder += "<qti-tbody>\n";
-      for (const row of bodyRows) {
-        builder += this.renderTableRow(row, align, false, context, state);
-      }
-      builder += "</qti-tbody>\n";
-    }
-    builder += "</qti-table>\n";
-    return builder;
-  }
-
-  private renderTableRow(
-    row: RootContent,
-    align: AlignType[],
-    isHeader: boolean,
-    context: RenderContext,
-    state: RenderState
-  ): string {
-    let builder = "<qti-tr>";
-    childrenOf(row).forEach((cellNode, columnIndex) => {
-      if (cellNode.type !== "tableCell") {
-        throw unsupported("Table rows must contain cells", context, cellNode);
-      }
-      builder += this.renderTableCell(
-        cellNode as TableCell,
-        align[columnIndex] ?? null,
-        isHeader,
-        context,
-        state
-      );
+  private renderChoiceHast(listItem: ListItem): HastRoot {
+    const root = toHast({ type: "root", children: [listItem] } as MdastRoot, {
+      allowDangerousHtml: true
     });
-    builder += "</qti-tr>\n";
-    return builder;
+    return prepareHast(root, "choice");
   }
+}
 
-  private renderTableCell(
-    cell: TableCell,
-    alignment: AlignType,
-    isHeader: boolean,
-    context: RenderContext,
-    state: RenderState
-  ): string {
-    const tag = isHeader ? "qti-th" : "qti-td";
-    let builder = `<${tag}`;
-    if (alignment !== null && alignment !== undefined) {
-      builder += ` style="text-align: ${escapeXml(alignment)};"`;
-    }
-    builder += ">";
-    builder += this.renderInlineChildren(cell, context, state);
-    builder += `</${tag}>`;
-    return builder;
+function createRenderState(clozeHandling: ClozeHandling, clozeBlanks: ClozeBlank[]): RenderState {
+  return {
+    clozeHandling,
+    responseIds: responseIdsFor(clozeBlanks),
+    blankIndex: 0,
+    localImages: []
+  };
+}
+
+function prepareHast(tree: Nodes, taskListMode: "normal" | "choice"): HastRoot {
+  const parsed = raw(tree);
+  if (parsed.type !== "root") {
+    throw new Error("Markdown conversion did not produce a HAST root");
   }
+  removeComments(parsed);
+  parsed.children = parsed.children.filter(
+    (child) => child.type !== "text" || child.value.trim() !== ""
+  );
+  normalizeTaskListInputs(parsed, taskListMode);
+  normalizeTableAlignment(parsed);
+  return parsed;
+}
 
-  private renderInlineChildren(node: Parent, context: RenderContext, state: RenderState): string {
-    let builder = "";
-    for (const child of childrenOf(node)) {
-      builder += this.renderInlineNode(child, context, state);
-    }
-    return builder;
-  }
+function serialize(nodes: RootContent[]): string {
+  return toHtml(nodes, XML_SERIALIZER_OPTIONS);
+}
 
-  private renderInlineNode(node: RootContent, context: RenderContext, state: RenderState): string {
-    switch (node.type) {
-      case "text":
-        return this.renderText(node.value, state);
-      case "emphasis":
-        return `<qti-em>${this.renderInlineChildren(node, context, state)}</qti-em>`;
-      case "strong":
-        return `<qti-strong>${this.renderInlineChildren(node, context, state)}</qti-strong>`;
-      case "delete":
-        return `<qti-del>${this.renderInlineChildren(node, context, state)}</qti-del>`;
-      case "inlineCode":
-        return this.appendCodeFragments(node.value, state);
-      case "link":
-        return this.renderLink(node, context, state);
-      case "image":
-        return this.renderImage(node, context, state);
-      case "break":
-        return "<qti-br/>";
-      case "html":
-        if (isHtmlComment(node)) {
-          return "";
-        }
-        throw unsupported("Raw HTML is not supported in QTI output", context, node);
-      default:
-        throw unsupported(`Unsupported inline element: ${node.type}`, context, node);
+function removeComments(parent: Parent): void {
+  parent.children = parent.children.filter((child) => child.type !== "comment");
+  for (const child of parent.children) {
+    if (child.type === "element") {
+      removeComments(child);
     }
   }
+}
 
-  private renderText(text: string, state: RenderState): string {
-    if (state.clozeHandling !== "enabled") {
-      return escapeXml(decodeClozeEscapes(text, state.clozeHandling));
+function normalizeTaskListInputs(parent: Parent, taskListMode: "normal" | "choice"): void {
+  const nextChildren: RootContent[] = [];
+  for (const child of parent.children) {
+    if (child.type === "element" && child.tagName === "input" && isTaskCheckbox(child)) {
+      if (taskListMode === "normal") {
+        nextChildren.push({
+          type: "text",
+          value: child.properties.checked === true ? "[x]" : "[ ]"
+        });
+      }
+      continue;
     }
-    let builder = "";
-    for (const part of parseClozePrompt(text)) {
-      if (part.kind === "text") {
-        builder += escapeXml(decodeClozeEscapes(part.value, state.clozeHandling));
-      } else {
-        builder += this.emitBlankInteraction(state);
+    if (child.type === "element") {
+      normalizeTaskListInputs(child, taskListMode);
+    }
+    nextChildren.push(child);
+  }
+  parent.children = nextChildren;
+}
+
+function isTaskCheckbox(element: Element): boolean {
+  return element.properties.type === "checkbox";
+}
+
+function isBlockElement(tagName: string): boolean {
+  return /^(address|article|aside|blockquote|details|dialog|div|dl|fieldset|figcaption|figure|footer|form|h[1-6]|header|hgroup|hr|main|nav|ol|p|pre|section|table|ul)$/u.test(
+    tagName
+  );
+}
+
+function normalizeTableAlignment(parent: Parent): void {
+  for (const child of parent.children) {
+    if (child.type !== "element") {
+      continue;
+    }
+    if (
+      (child.tagName === "th" || child.tagName === "td") &&
+      typeof child.properties.align === "string"
+    ) {
+      const alignment = child.properties.align;
+      const existingStyle =
+        typeof child.properties.style === "string" ? child.properties.style.trim() : "";
+      child.properties.style =
+        existingStyle === ""
+          ? `text-align: ${alignment};`
+          : `${existingStyle} text-align: ${alignment};`;
+      delete child.properties.align;
+    }
+    normalizeTableAlignment(child);
+  }
+}
+
+function collectLocalImages(parent: Parent, state: RenderState): void {
+  for (const child of parent.children) {
+    if (child.type !== "element") {
+      continue;
+    }
+    if (child.tagName === "img" && typeof child.properties.src === "string") {
+      if (!isRemoteImagePath(child.properties.src)) {
+        state.localImages.push(child.properties.src);
       }
     }
-    return builder;
-  }
-
-  private emitBlankInteraction(state: RenderState): string {
-    const responseId = state.responseIds[state.blankIndex] ?? "RESPONSE";
-    state.blankIndex += 1;
-    return `<qti-text-entry-interaction response-identifier="${responseId}"/>`;
-  }
-
-  private renderLink(node: Link, context: RenderContext, state: RenderState): string {
-    const destination = node.url;
-    if (destination === undefined || destination === null || destination.trim() === "") {
-      throw unsupported("Link destination must not be empty", context, node);
-    }
-    let builder = `<qti-a href="${escapeXml(destination)}"`;
-    if (node.title !== undefined && node.title !== null && node.title.trim() !== "") {
-      builder += ` title="${escapeXml(node.title)}"`;
-    }
-    builder += ">";
-    builder += this.renderInlineChildren(node, context, state);
-    builder += "</qti-a>";
-    return builder;
-  }
-
-  private renderImage(node: Image, _context: RenderContext, state: RenderState): string {
-    const destination = node.url;
-    if (destination === undefined || destination === null || destination.trim() === "") {
-      throw unsupported("Image path must not be empty", _context, node);
-    }
-    const altText = node.alt ?? "";
-    let builder = `<qti-img src="${escapeXml(destination)}"`;
-    builder += ` alt="${escapeXml(altText)}"`;
-    if (node.title !== undefined && node.title !== null && node.title.trim() !== "") {
-      builder += ` title="${escapeXml(node.title)}"`;
-    }
-    builder += "/>";
-    if (!isRemoteImagePath(destination)) {
-      state.localImages.push(destination);
-    }
-    return builder;
+    collectLocalImages(child, state);
   }
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+function transformClozeTextNodes(parent: Parent, state: RenderState): void {
+  if (state.clozeHandling !== "enabled") {
+    decodeTextEscapes(parent);
+    return;
+  }
+  const nextChildren: RootContent[] = [];
+  for (const child of parent.children) {
+    if (child.type === "text") {
+      nextChildren.push(...renderTextNodes(child.value, state));
+      continue;
+    }
+    if (child.type === "element") {
+      transformClozeTextNodes(child, state);
+    }
+    nextChildren.push(child);
+  }
+  parent.children = nextChildren;
 }
 
-function codeLiteral(value: string): string {
-  return value === "" ? "" : `${value}\n`;
+function decodeTextEscapes(parent: Parent): void {
+  for (const child of parent.children) {
+    if (child.type === "text") {
+      child.value = decodeClozeEscapes(child.value, "disabled");
+    } else if (child.type === "element") {
+      decodeTextEscapes(child);
+    }
+  }
+}
+
+function renderTextNodes(value: string, state: RenderState): RootContent[] {
+  const nodes: RootContent[] = [];
+  for (const part of parseClozePrompt(value)) {
+    if (part.kind === "text") {
+      if (part.value !== "") {
+        nodes.push({ type: "text", value: decodeClozeEscapes(part.value, state.clozeHandling) });
+      }
+    } else {
+      const responseId = state.responseIds[state.blankIndex] ?? "RESPONSE";
+      state.blankIndex += 1;
+      nodes.push({
+        type: "element",
+        tagName: "qti-text-entry-interaction",
+        properties: { "response-identifier": responseId },
+        children: []
+      });
+    }
+  }
+  return nodes;
+}
+
+function collectClozeBlanks(root: HastRoot): ClozeBlank[] {
+  const blanks: ClozeBlank[] = [];
+  const visit = (node: Nodes): void => {
+    if (node.type === "text") {
+      for (const part of parseClozePrompt(node.value)) {
+        if (part.kind === "blank") {
+          blanks.push(part.blank);
+        }
+      }
+      return;
+    }
+    if (node.type === "element") {
+      for (const child of node.children) {
+        visit(child);
+      }
+    } else if (node.type === "root") {
+      for (const child of node.children) {
+        visit(child);
+      }
+    }
+  };
+  visit(root);
+  return blanks;
 }
 
 function distinct(values: string[]): string[] {
@@ -488,19 +392,11 @@ function distinct(values: string[]): string[] {
 }
 
 function containsNestedList(node: unknown): boolean {
-  const typed = node as { type?: string };
+  const typed = node as { type?: string; children?: unknown[] };
   if (typed.type === "list") {
     return true;
   }
-  return childrenOf(node).some((child) => containsNestedList(child));
-}
-
-function isHtmlComment(node: Html): boolean {
-  const trimmed = node.value.trim();
-  if (!trimmed.startsWith("<!--") || !trimmed.endsWith("-->")) {
-    return false;
-  }
-  return !trimmed.slice(4, -3).includes("--");
+  return (typed.children ?? []).some((child) => containsNestedList(child));
 }
 
 function responseIdsFor(blanks: ClozeBlank[]): string[] {
@@ -511,27 +407,6 @@ function responseIdsFor(blanks: ClozeBlank[]): string[] {
     return ["RESPONSE"];
   }
   return blanks.map((_blank, index) => `RESPONSE_${index + 1}`);
-}
-
-function collectClozeBlanks(document: Parent): ClozeBlank[] {
-  const blanks: ClozeBlank[] = [];
-  const visit = (node: Nodes): void => {
-    if (node.type === "text" || node.type === "inlineCode" || node.type === "code") {
-      for (const part of parseClozePrompt(node.value)) {
-        if (part.kind === "blank") {
-          blanks.push(part.blank);
-        }
-      }
-      if (node.type !== "text") {
-        return;
-      }
-    }
-    for (const child of childrenOf(node)) {
-      visit(child as Nodes);
-    }
-  };
-  visit(document as Nodes);
-  return blanks;
 }
 
 function preprocessClozeEscapes(markdown: string): string {

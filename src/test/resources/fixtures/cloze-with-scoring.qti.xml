@@ -17,7 +17,7 @@
     </qti-default-value>
   </qti-outcome-declaration>
   <qti-item-body>
-    <qti-p>The chemical formula for water is <qti-text-entry-interaction response-identifier="RESPONSE"/>.</qti-p>
+<p>The chemical formula for water is <qti-text-entry-interaction response-identifier="RESPONSE"></qti-text-entry-interaction>.</p>
     <qti-rubric-block view="scorer">
       <qti-p>[1] Provides H2O</qti-p>
     </qti-rubric-block>

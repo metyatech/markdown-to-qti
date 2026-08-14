@@ -50,24 +50,33 @@ Each question file maps to a `qti-assessment-item` with:
 
 The prompt is rendered in `qti-item-body`.
 
-## Markdown Elements
+## Markdown and HTML Presentation
 
-- Paragraphs -> `qti-p`
-- Headings (`###` to `######`) -> `qti-h3` to `qti-h6`
-- Emphasis -> `qti-em`
-- Strong -> `qti-strong`
-- Strikethrough -> `qti-del`
-- Links -> `qti-a`
-- Inline code -> `qti-code`
-- Code blocks -> `qti-pre` with `qti-code`
-- Blockquotes -> `qti-blockquote`
-- Bullet and ordered lists -> `qti-ul` / `qti-ol` with `qti-li`
-- Tables -> `qti-table`
-- Images -> `qti-img`
-- Horizontal rules -> `qti-hr`
+Markdown and normal raw HTML may be mixed. Markdown is converted through MDAST
+and HAST; raw HTML is parsed into the same HAST and then serialized into the
+QTI presentation content. HTML comments are source-only authoring notes and are
+omitted.
 
-HTML comments are treated as source-only authoring notes and omitted from QTI.
-Other raw HTML is rejected.
+Ordinary presentation elements retain their HTML names:
+
+- Paragraphs -> `p`
+- Headings -> `h1`–`h6`
+- Emphasis -> `em`
+- Strong -> `strong`
+- Strikethrough -> `del`
+- Links -> `a`
+- Inline code -> `code`
+- Code blocks -> `pre` containing `code`
+- Blockquotes -> `blockquote`
+- Bullet and ordered lists -> `ul` / `ol` with `li`
+- Tables -> `table` / `thead` / `tbody` / `tr` / `th` / `td`
+- Images -> `img`
+- Horizontal rules -> `hr`
+
+The `qti-*` namespace is reserved for QTI-specific structures and
+interactions. Markdown code fences retain normal Markdown code semantics and
+escape HTML-looking text. Authored `<pre><code>` may be used when nested rich
+HTML is intentionally required.
 
 ## Question Types
 

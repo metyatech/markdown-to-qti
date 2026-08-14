@@ -163,9 +163,13 @@ Additional frontmatter keys are allowed for authoring metadata, including nested
 YAML mappings. The converter reads only `question_type` and
 `time_budget_seconds` for QTI generation and ignores the rest.
 
-HTML comments are allowed as source-only authoring notes and omitted from
-generated QTI. Other raw HTML blocks and inline HTML are not supported and raise
-an error.
+Markdown and normal raw HTML may be mixed in prompt, option, scoring, and
+explanation content. Raw HTML is parsed as HTML structure and preserved in QTI
+presentation content; HTML comments remain source-only authoring notes and are
+omitted. Ordinary display elements use their HTML element names, while `qti-*`
+is reserved for QTI-specific structures and interactions. Markdown code fences
+retain normal Markdown code semantics, while authored `<pre><code>` may be used
+when nested rich HTML is intentionally required.
 
 ## Configuration and environment variables
 

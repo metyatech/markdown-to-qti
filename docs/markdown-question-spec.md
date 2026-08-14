@@ -168,7 +168,15 @@ as CommonMark with these extensions:
 - GFM tables
 - GFM task lists
 
-HTML comments are allowed as source-only authoring notes and are omitted from
-generated QTI. Other raw HTML blocks and inline HTML are rejected. Local images
-must use paths relative to the Markdown file. During generation, local images
-are copied to the output directory preserving relative paths.
+Markdown and normal raw HTML may be mixed in authored content. Raw HTML is
+parsed as HTML structure and preserved in generated QTI presentation content.
+HTML comments remain source-only authoring notes and are omitted from QTI.
+Ordinary display elements use their HTML element names (`p`, `h1`–`h6`, `em`,
+`strong`, `pre`, `code`, and so on). The `qti-*` namespace is reserved for
+QTI-specific structures and interactions.
+
+Markdown code fences retain normal Markdown code semantics: HTML-looking text
+inside a fence is escaped and is not interpreted as raw HTML. Authored
+`<pre><code>` may be used when nested rich HTML is intentionally required.
+Local images must use paths relative to the Markdown file. During generation,
+local images are copied to the output directory preserving relative paths.

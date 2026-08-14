@@ -348,6 +348,7 @@ test("cli copies local images to output directory", async () => {
     const outputDir = path.join(tempDir, "out");
     await mkdir(path.join(tempDir, "images"));
     writeFileSync(path.join(tempDir, "images", "diagram.png"), "fake image", "utf8");
+    writeFileSync(path.join(tempDir, "images", "raw.png"), "raw image", "utf8");
     const inputFile = path.join(tempDir, "image-prompt.md");
     writeFileSync(
       inputFile,
@@ -362,6 +363,8 @@ test("cli copies local images to output directory", async () => {
         "Identify this.",
         "",
         '![Alt text](images/diagram.png "Diagram")',
+        "",
+        '<img src="images/raw.png" alt="Raw image" />',
         ""
       ].join("\n"),
       "utf8"
@@ -375,9 +378,14 @@ test("cli copies local images to output directory", async () => {
 
     assert.equal(exitCode, 0);
     assert.equal(existsSync(path.join(outputDir, "images", "diagram.png")), true);
+    assert.equal(existsSync(path.join(outputDir, "images", "raw.png")), true);
     assert.match(
       readFileSync(path.join(outputDir, "image-prompt.qti.xml"), "utf8"),
-      /<qti-img src="images\/diagram\.png" alt="Alt text" title="Diagram"\/>/u
+      /<img src="images\/diagram\.png" alt="Alt text" title="Diagram" \/>/u
+    );
+    assert.match(
+      readFileSync(path.join(outputDir, "image-prompt.qti.xml"), "utf8"),
+      /<img src="images\/raw\.png" alt="Raw image" \/>/u
     );
   } finally {
     await rm(tempDir, { force: true, recursive: true });

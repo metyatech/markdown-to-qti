@@ -7,43 +7,17 @@
     time-dependent="false">
   <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string"/>
   <qti-item-body>
-    <qti-p>This has <qti-strong>bold</qti-strong>, <qti-em>italic</qti-em>, <qti-del>strike</qti-del>, and <qti-code>code</qti-code>. A <qti-a href="https://example.com" title="Example">link</qti-a> is here.</qti-p>
-    <qti-h3>Subheading</qti-h3>
-    <qti-p>Paragraph under subheading.</qti-p>
-    <qti-blockquote>
-      <qti-p>Quoted <qti-strong>text</qti-strong> with <qti-code>code</qti-code>.</qti-p>
-    </qti-blockquote>
-    <qti-ul>
-      <qti-li>
-        <qti-p>Item one</qti-p>
-      </qti-li>
-      <qti-li>
-        <qti-p>[ ] Task open</qti-p>
-      </qti-li>
-      <qti-li>
-        <qti-p>[x] Task done</qti-p>
-      </qti-li>
-    </qti-ul>
-    <qti-ol>
-      <qti-li>
-        <qti-p>First</qti-p>
-      </qti-li>
-      <qti-li>
-        <qti-p>Second</qti-p>
-      </qti-li>
-    </qti-ol>
-    <qti-hr/>
-    <qti-pre><qti-code>val answer = 42
-</qti-code></qti-pre>
-    <qti-table>
-      <qti-thead>
-        <qti-tr><qti-th style="text-align: left;">Left</qti-th><qti-th style="text-align: right;">Right</qti-th></qti-tr>
-      </qti-thead>
-      <qti-tbody>
-        <qti-tr><qti-td style="text-align: left;">A</qti-td><qti-td style="text-align: right;">B</qti-td></qti-tr>
-        <qti-tr><qti-td style="text-align: left;">C</qti-td><qti-td style="text-align: right;">D</qti-td></qti-tr>
-      </qti-tbody>
-    </qti-table>
+<p>This has <strong>bold</strong>, <em>italic</em>, <del>strike</del>, and <code>code</code>. A <a href="https://example.com" title="Example">link</a> is here.</p><h3>Subheading</h3><p>Paragraph under subheading.</p><blockquote>
+<p>Quoted <strong>text</strong> with <code>code</code>.</p>
+</blockquote><ul class="contains-task-list">
+<li>Item one</li>
+<li class="task-list-item">[ ] Task open</li>
+<li class="task-list-item">[x] Task done</li>
+</ul><ol>
+<li>First</li>
+<li>Second</li>
+</ol><hr /><pre><code class="language-kotlin">val answer = 42
+</code></pre><table><thead><tr><th style="text-align: left;">Left</th><th style="text-align: right;">Right</th></tr></thead><tbody><tr><td style="text-align: left;">A</td><td style="text-align: right;">B</td></tr><tr><td style="text-align: left;">C</td><td style="text-align: right;">D</td></tr></tbody></table>
     <qti-extended-text-interaction response-identifier="RESPONSE"/>
   </qti-item-body>
 </qti-assessment-item>

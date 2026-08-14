@@ -20,7 +20,7 @@ const markdownFixtures = readdirSync(fixturesDir)
   .sort();
 
 for (const markdownFixture of markdownFixtures) {
-  test(`matches Kotlin golden fixture: ${markdownFixture}`, () => {
+  test(`matches canonical QTI fixture: ${markdownFixture}`, () => {
     const fixtureId = markdownFixture.slice(0, -".md".length);
     const markdownPath = path.join(fixturesDir, markdownFixture);
     const markdown = readFileSync(markdownPath, "utf8");
@@ -114,48 +114,6 @@ test("rejects non-positive or non-integer time_budget_seconds", () => {
       /time_budget_seconds must be a positive integer/u
     );
   }
-});
-
-test("rejects non-comment raw HTML blocks", () => {
-  assert.throws(
-    () =>
-      convertMarkdownToQti(
-        [
-          "---",
-          "question_type: descriptive",
-          "time_budget_seconds: 60",
-          "---",
-          "# Raw HTML",
-          "",
-          "## Prompt",
-          "<div>Raw HTML is still unsupported.</div>",
-          ""
-        ].join("\n"),
-        "raw-html"
-      ),
-    /Raw HTML blocks are not supported in QTI output/u
-  );
-});
-
-test("rejects non-comment raw inline HTML", () => {
-  assert.throws(
-    () =>
-      convertMarkdownToQti(
-        [
-          "---",
-          "question_type: descriptive",
-          "time_budget_seconds: 60",
-          "---",
-          "# Raw Inline HTML",
-          "",
-          "## Prompt",
-          "This has <span>raw HTML</span> inline.",
-          ""
-        ].join("\n"),
-        "raw-inline-html"
-      ),
-    /Raw HTML is not supported in QTI output/u
-  );
 });
 
 function normalizeXml(xml: string): string {

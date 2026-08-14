@@ -663,19 +663,6 @@ function safeLocalImagePath(source: string, sourcePath: string): string {
   return normalized;
 }
 
-function isBlockContent(xml: string): boolean {
-  if (xml.includes("<qti-p") || xml.includes("<qti-ul") || xml.includes("<qti-ol")) {
-    return true;
-  }
-  if (xml.includes("<qti-blockquote") || xml.includes("<qti-pre") || xml.includes("<qti-table")) {
-    return true;
-  }
-  if (xml.includes("<qti-hr") || xml.includes("<qti-h")) {
-    return true;
-  }
-  return xml.includes("<qti-li");
-}
-
 function appendXml(xml: string): string {
   if (xml.trim() === "") {
     return "";
@@ -786,7 +773,7 @@ function buildItemBody(question: MarkdownQuestion): string {
       question.options.forEach((option, index) => {
         const identifier = `CHOICE_${index + 1}`;
         const content = option.contentXml.trim();
-        if (isBlockContent(content)) {
+        if (option.isBlockContent) {
           builder += `      <qti-simple-choice identifier="${identifier}">\n`;
           builder += appendXml(content);
           builder += "      </qti-simple-choice>\n";

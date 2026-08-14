@@ -17,7 +17,7 @@
     </qti-default-value>
   </qti-outcome-declaration>
   <qti-item-body>
-    <qti-p>Which number is prime?</qti-p>
+<p>Which number is prime?</p>
     <qti-choice-interaction response-identifier="RESPONSE" max-choices="1">
       <qti-simple-choice identifier="CHOICE_1">9</qti-simple-choice>
       <qti-simple-choice identifier="CHOICE_2">11</qti-simple-choice>
