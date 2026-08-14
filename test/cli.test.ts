@@ -6,9 +6,22 @@ import path from "node:path";
 import { Writable } from "node:stream";
 import test from "node:test";
 
-import { runCli } from "../src/cli.js";
+import { runCli, VERSION } from "../src/cli.js";
 
 const fixturesDir = path.resolve("src/test/resources/fixtures");
+
+test("CLI version matches package.json", () => {
+  const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8")) as {
+    version: string;
+  };
+  const stdout = captureStream();
+
+  const exitCode = runCli(["--version"], stdout.stream, devNullStream());
+
+  assert.equal(exitCode, 0);
+  assert.equal(VERSION, packageJson.version);
+  assert.equal(stdout.text(), `markdown-to-qti version ${packageJson.version}\n`);
+});
 
 test("cli writes QTI output and assessment-test for direct input", async () => {
   const tempDir = mkdtempSync(path.join(tmpdir(), "markdown-to-qti-cli-"));
