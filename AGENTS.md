@@ -70,19 +70,27 @@ Source: github:metyatech/agent-rules@HEAD/rules/domains/markdown-to-qti/project.
 - Avoid random IDs unless explicitly required.
 - When behavior is ambiguous, prefer standards-compliant conservative output and document the decision.
 
-## Markdown conversion behavior
+## Markdown and HTML presentation conversion
 
-- Define supported Markdown features explicitly, including headings, lists, code blocks, and inline formatting.
-- If a requested Markdown construct cannot be represented in QTI, do not implement it and explicitly state this in the response.
-- Unsupported constructs should fail fast with actionable messages or be safely downgraded with clear warnings.
-- Preserve exact formatting as much as possible when mapping Markdown to QTI.
+- CommonMark/GFM and normal raw HTML MUST share one structured conversion pipeline: MDAST to HAST, parsed raw HTML merged into that HAST, then XML-safe QTI serialization.
+- Raw HTML is first-class authored input, not opaque text. Do not introduce a parallel string-replacement presentation pipeline.
+- Ordinary presentation MUST use standard HTML element names where representable by the QTI 3 content model. Reserve `qti-*` names for actual QTI-specific structures and interactions.
+- Retired qti-prefixed presentation aliases are FORBIDDEN: `qti-p`, `qti-h1`–`qti-h6`, `qti-div`, `qti-em`, `qti-strong`, `qti-del`, `qti-a`, `qti-blockquote`, `qti-ul`, `qti-ol`, `qti-li`, `qti-pre`, `qti-code`, `qti-table`, `qti-thead`, `qti-tbody`, `qti-tfoot`, `qti-tr`, `qti-th`, `qti-td`, `qti-img`, `qti-br`, and `qti-hr`. Do not restore or support compatibility shims for these retired aliases; `qti-*` remains reserved for actual QTI-specific elements and interactions.
+- Preserve representable authored hierarchy, nesting, whitespace, and attributes, including `style`, `class`, `id`, `title`, `aria-*`, and `data-*`, subject to QTI/XML/content-model constraints.
+- HTML comments are source-only authoring notes and MUST be omitted from QTI output.
+- Markdown fenced code MUST retain literal Markdown-code semantics: HTML-looking source is escaped, not interpreted as raw HTML.
+- Authored raw `<pre><code>` MAY contain intentional nested rich HTML. Preserve that structure and preformatted whitespace through QTI conversion.
+- Choice `## Options` MUST be a flat Markdown task list. Checked state determines correctness, task-list checkbox syntax is structural metadata and MUST NOT render inside `qti-simple-choice`, rich option content MUST remain structured HTML, and list order determines choice order.
+- Cloze processing MUST preserve the surrounding rich presentation tree and MUST NOT flatten rich HTML to Markdown or plain text to locate blanks.
+- A scoring rubric MUST serialize as `qti-rubric-block view="scorer"` containing ordinary standard HTML `p` criteria; `qti-p` is FORBIDDEN.
+- This trusted internal authoring pipeline MUST NOT sanitize away authored presentation HTML. Reject only content that cannot be represented as valid QTI/XML/content-model output; QTI validity remains authoritative.
 
 ## Testing expectations
 
 - Add unit tests for parsing and mapping rules.
 - Add golden tests for QTI XML output using normalized XML comparison.
 - Include end-to-end fixtures for Markdown input to QTI output under a dedicated test folder.
-- Golden tests MUST preserve parity with historical Kotlin fixture outputs unless an intentional format change is documented.
+- Golden tests MUST protect the current canonical presentation contract.
 
 ## CLI / UX
 
